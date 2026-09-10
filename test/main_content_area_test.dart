@@ -1,7 +1,10 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:frontend/core/app_settings.dart';
 import 'package:frontend/core/theme/design_tokens.dart';
 import 'package:frontend/widgets/main_content_area.dart';
+
+import 'helpers/settings_box.dart';
 
 String _fmt(DateTime d) =>
     "${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}.${d.year}";
@@ -43,14 +46,15 @@ Widget _harness({
         onSetProjectIcon: (_, _) {},
         projectColorKeys: const {},
         onSetProjectColor: (_, _) {},
-        sortByPriority: false,
-        onToggleSortByPriority: () {},
       ),
     ),
   );
 }
 
 void main() {
+  // MainContentArea читает выбранный способ сортировки из настроек.
+  useSettingsBox();
+
   final today = DateTime.now();
   final tomorrow = today.add(const Duration(days: 1));
 
@@ -73,6 +77,41 @@ void main() {
       await tester.pumpWidget(_harness(selectedMenu: 'Мой день', tasks: const []));
 
       expect(find.text('На сегодня ничего не запланировано'), findsOneWidget);
+    });
+  });
+
+  group('MainContentArea — выполненные', () {
+    testWidgets('убраны в свёрнутый блок, активные остаются в списке', (tester) async {
+      AppSettings.setCompletedExpanded(false);
+      final tasks = [
+        {'id': 1, 'title': 'Активная', 'due_date': _fmt(today), 'parent_id': null, 'is_completed': false},
+        {'id': 2, 'title': 'Уже сделана', 'due_date': _fmt(today), 'parent_id': null, 'is_completed': true},
+      ];
+
+      await tester.pumpWidget(_harness(selectedMenu: 'Мой день', tasks: tasks));
+
+      expect(find.text('Активная'), findsOneWidget);
+      expect(find.text('Уже сделана'), findsNothing,
+          reason: 'выполненное не должно занимать экран');
+      expect(find.text('Выполнено'), findsOneWidget);
+
+      await tester.tap(find.text('Выполнено'));
+      await tester.pumpAndSettle();
+      expect(find.text('Уже сделана'), findsOneWidget);
+    });
+
+    testWidgets('раздел не считается пустым, если все задачи выполнены', (tester) async {
+      AppSettings.setCompletedExpanded(false);
+      final tasks = [
+        {'id': 1, 'title': 'Всё сделано', 'due_date': _fmt(today), 'parent_id': null, 'is_completed': true},
+      ];
+
+      await tester.pumpWidget(_harness(selectedMenu: 'Мой день', tasks: tasks));
+
+      // Иллюстрация «ничего не запланировано» здесь была бы обманом: задача на
+      // сегодня есть, просто она уже закрыта.
+      expect(find.text('На сегодня ничего не запланировано'), findsNothing);
+      expect(find.text('Выполнено'), findsOneWidget);
     });
   });
 

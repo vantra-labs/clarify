@@ -153,7 +153,7 @@ void showInviteMemberDialog({
                     autofocus: true,
                     textCapitalization: TextCapitalization.characters,
                     decoration: InputDecoration(
-                      hintText: "Например, AB12CD",
+                      hintText: "Например, AB12CD".tr(currentLang),
                       hintStyle: TextStyle(color: textMuted),
                       enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: glassBorderColor)),
                     ),
@@ -199,7 +199,7 @@ void showInviteMemberDialog({
                           } catch (e) {
                             logError("Ошибка приглашения: $e");
                             if (context.mounted) {
-                              ClarifyToast.show(context, 'Ошибка сети: $e', variant: ClarifyToastVariant.danger);
+                              ClarifyToast.show(context, '${'Ошибка сети: '.tr(currentLang)}$e', variant: ClarifyToastVariant.danger);
                               setStateDialog(() => isSending = false);
                             }
                           }
@@ -292,7 +292,7 @@ void showLeaveOrDeleteWorkspaceDialog({
                           } catch (e) {
                             logError("Ошибка удаления/выхода из команды: $e");
                             if (context.mounted) {
-                              ClarifyToast.show(context, 'Ошибка сети: $e', variant: ClarifyToastVariant.danger);
+                              ClarifyToast.show(context, '${'Ошибка сети: '.tr(currentLang)}$e', variant: ClarifyToastVariant.danger);
                               setStateDialog(() => isLoading = false);
                             }
                           }

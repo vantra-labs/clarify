@@ -1,10 +1,31 @@
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 /// Единая точка конфигурации для значений, которые раньше были россыпью
 /// захардкожены по всему коду (см. docs/IMPROVEMENT_PLAN.md, пункт P3.4).
 class AppConfig {
   AppConfig._();
 
-  static const String backendBaseUrl =
-      'https://clarify-backend-g6np.onrender.com';
+  /// Адрес бэкенда.
+  ///
+  /// С 08.09.2026 бэкенд живёт edge-функцией в том же проекте Supabase, что и
+  /// база. До этого он стоял на Render, и в сентябре 2026 его адреса
+  /// (216.24.57.0/24) перестали открываться из России — приложение не пускало
+  /// людей внутрь, потому что вход через Яндекс идёт через бэкенд. Режут именно
+  /// IP, а не имя: голый https://216.24.57.7 из РФ тоже не открывался, так что
+  /// свой домен поверх Render не помог бы.
+  ///
+  /// Собирается из SUPABASE_URL, а не пишется строкой: адрес проекта уже есть в
+  /// .env, и вторая его копия рано или поздно разъехалась бы с первой.
+  static String get backendBaseUrl {
+    final supabaseUrl = dotenv.env['SUPABASE_URL'];
+    if (supabaseUrl == null || supabaseUrl.isEmpty) {
+      throw StateError(
+        'SUPABASE_URL не задан в .env — бэкенд живёт в том же проекте Supabase, '
+        'без этого адреса его не найти',
+      );
+    }
+    return '$supabaseUrl/functions/v1/api';
+  }
 
   /// Локальный порт, на котором main.dart поднимает временный HttpServer
   /// для перехвата Яндекс OAuth-редиректа.

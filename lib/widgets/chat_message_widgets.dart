@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/localization.dart';
+import '../services/attachment_service.dart';
 import '../core/theme/design_tokens.dart';
+import 'clarify_attachments.dart';
 import 'clarify_bottom_sheet.dart';
 import 'clarify_glass.dart';
 import 'clarify_surface.dart';
@@ -35,6 +37,10 @@ class ChatMessageBubble extends StatelessWidget {
   final String replyToSenderLabel;
   final VoidCallback onOpenActions;
 
+  /// Вложения всей переписки — пузырёк берёт из них свои. Грузит их чат одним
+  /// запросом на все сообщения (см. [loadChatAttachments]).
+  final ChatAttachments attachments;
+
   const ChatMessageBubble({
     super.key,
     required this.currentLang,
@@ -45,6 +51,7 @@ class ChatMessageBubble extends StatelessWidget {
     this.replyToMessage,
     this.replyToSenderLabel = '',
     required this.onOpenActions,
+    this.attachments = ChatAttachments.empty,
   });
 
   @override
@@ -56,6 +63,7 @@ class ChatMessageBubble extends StatelessWidget {
     final forwardedFrom = message['forwarded_from_name'] as String?;
     final readAt = message['read_at'];
     final metaColor = isMine ? t.onAccent.withValues(alpha: 0.7) : t.text3;
+    final myAttachments = attachments.of(message['id']);
 
     return Align(
       alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
@@ -99,7 +107,19 @@ class ChatMessageBubble extends StatelessWidget {
                   padding: const EdgeInsets.only(bottom: 3),
                   child: Text('${'Переслано от'.tr(currentLang)} $forwardedFrom', style: TextStyle(fontSize: 11, fontStyle: FontStyle.italic, color: metaColor)),
                 ),
-              Text(text, style: TextStyle(color: isMine ? t.onAccent : t.text)),
+              // Сообщение может состоять из одного файла — тогда пустой текст
+              // не занимает строку.
+              if (text.isNotEmpty)
+                Text(text, style: TextStyle(color: isMine ? t.onAccent : t.text)),
+              if (myAttachments.isNotEmpty)
+                Padding(
+                  padding: EdgeInsets.only(top: text.isEmpty ? 0 : 8, bottom: 2),
+                  child: ClarifyAttachmentTiles(
+                    attachments: myAttachments,
+                    previewUrls: attachments.previewUrls,
+                    currentLang: currentLang,
+                  ),
+                ),
               const SizedBox(height: 2),
               Row(
                 mainAxisSize: MainAxisSize.min,
@@ -310,7 +330,12 @@ class _PreviewBanner extends StatelessWidget {
 /// (реплай/эдит хранятся у него, не здесь).
 class ChatComposer extends StatefulWidget {
   final String currentLang;
-  final Future<void> Function(String text) onSubmit;
+
+  /// Отправка. Файлы приходят вторым аргументом: их нельзя сохранить до того,
+  /// как у сообщения появится номер, поэтому прикладывает их вызывающий — сразу
+  /// после вставки сообщения.
+  final Future<void> Function(String text, List<AttachmentDraft> attachments)
+      onSubmit;
   final String? replyPreviewLabel;
   final String? replyPreviewText;
   final VoidCallback? onCancelReply;
@@ -336,6 +361,7 @@ class ChatComposer extends StatefulWidget {
 
 class _ChatComposerState extends State<ChatComposer> {
   final _controller = TextEditingController();
+  final List<AttachmentDraft> _drafts = [];
   bool _isSending = false;
 
   @override
@@ -357,15 +383,40 @@ class _ChatComposerState extends State<ChatComposer> {
 
   Future<void> _submit() async {
     final text = _controller.text.trim();
-    if (text.isEmpty || _isSending) return;
+    // Сообщение из одного файла, без подписи, — нормальный случай; пустое и без
+    // файлов отправлять нечего.
+    if ((text.isEmpty && _drafts.isEmpty) || _isSending) return;
     final wasEditing = widget.isEditing;
+    final attachments = List<AttachmentDraft>.from(_drafts);
     setState(() => _isSending = true);
-    if (!wasEditing) _controller.clear();
-    await widget.onSubmit(text);
+    if (!wasEditing) {
+      _controller.clear();
+      _drafts.clear();
+    }
+    await widget.onSubmit(text, attachments);
     if (mounted) {
       setState(() => _isSending = false);
       if (wasEditing) _controller.clear();
     }
+  }
+
+  Future<void> _pick() async {
+    final free = AttachmentService.maxPerOwner - _drafts.length;
+    if (free <= 0) {
+      ClarifyToast.show(
+        context,
+        '${'Больше файлов прикрепить нельзя, максимум '.tr(widget.currentLang)}${AttachmentService.maxPerOwner}',
+        variant: ClarifyToastVariant.warning,
+      );
+      return;
+    }
+    final picked = await pickAttachmentDrafts(
+      context: context,
+      currentLang: widget.currentLang,
+      limit: free,
+    );
+    if (picked.isEmpty || !mounted) return;
+    setState(() => _drafts.addAll(picked));
   }
 
   @override
@@ -387,10 +438,31 @@ class _ChatComposerState extends State<ChatComposer> {
             label: 'Редактирование сообщения'.tr(widget.currentLang),
             onClose: widget.onCancelEdit,
           ),
+        // Выбранные файлы — над полем ввода, чтобы было видно, что уйдёт
+        // вместе с сообщением. При правке текста их не показываем: правка
+        // меняет только текст.
+        if (!widget.isEditing)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: ClarifyAttachmentDrafts(
+                drafts: _drafts,
+                currentLang: widget.currentLang,
+                onRemove: (draft) => setState(() => _drafts.remove(draft)),
+              ),
+            ),
+          ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
           child: Row(
             children: [
+              if (!widget.isEditing)
+                IconButton(
+                  icon: Icon(LucideIcons.paperclip, color: t.text3),
+                  tooltip: 'Прикрепить файл'.tr(widget.currentLang),
+                  onPressed: _isSending ? null : _pick,
+                ),
               Expanded(
                 child: TextField(
                   controller: _controller,
@@ -562,7 +634,7 @@ Future<void> forwardMessage({
           });
         }
       } on PostgrestException catch (e) {
-        if (context.mounted) ClarifyToast.show(context, 'Ошибка пересылки: ${e.message}', variant: ClarifyToastVariant.danger);
+        if (context.mounted) ClarifyToast.show(context, '${'Ошибка пересылки: '.tr(currentLang)}${e.message}', variant: ClarifyToastVariant.danger);
       }
     },
   );

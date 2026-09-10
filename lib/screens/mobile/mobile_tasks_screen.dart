@@ -2,8 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../core/localization.dart';
 import '../../core/theme/design_tokens.dart';
+import '../../core/app_settings.dart';
 import '../../core/quick_parse.dart';
+import '../../core/task_sort.dart';
+import '../../widgets/clarify_sort_selector.dart';
 import '../../widgets/clarify_cascade_item.dart';
+import '../../widgets/clarify_completed_group.dart';
 import '../../widgets/clarify_illustrations.dart';
 import '../../widgets/clarify_quick_add.dart';
 import 'mobile_search_screen.dart';
@@ -33,6 +37,11 @@ class MobileTasksScreen extends StatefulWidget {
   /// которому сюда раньше добавляли выбор команды.
   final Future<void> Function(QuickParseResult parsed) onQuickCreate;
 
+  /// Сохранить порядок после перетаскивания. Экран сам в базу не ходит —
+  /// сервис задач живёт у владельца оболочки, и ходить в него из каждого
+  /// экрана значило бы завести второй путь записи мимо очереди отправки.
+  final void Function(List<Map<String, dynamic>> orderedTasks) onReorderSaved;
+
   final DateTime? initialDate;
   final Set<String> datesWithTasks;
   final Map<String, int> dateLoadMinutes;
@@ -49,6 +58,7 @@ class MobileTasksScreen extends StatefulWidget {
     required this.onTap,
     required this.onQuickUpdateTask,
     required this.onQuickCreate,
+    required this.onReorderSaved,
     required this.datesWithTasks,
     required this.dateLoadMinutes,
     this.initialDate,
@@ -115,8 +125,39 @@ class _MobileTasksScreenState extends State<MobileTasksScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Подписка на способ сортировки: сам выбор живёт в ClarifySortSelector в
+    // шапке, но перерисовать надо список ниже, а не только подпись в меню.
+    return ValueListenableBuilder<TaskSortMode>(
+      valueListenable: AppSettings.taskSortMode,
+      builder: (context, sortMode, _) => _buildContent(context, sortMode),
+    );
+  }
+
+  Widget _buildContent(BuildContext context, TaskSortMode sortMode) {
     final t = context.tokens;
-    final tasks = _filtered..sort((a, b) => (a['due_time'] ?? '23:59').compareTo(b['due_time'] ?? '23:59'));
+    // Способ сортировки общий с десктопом. По умолчанию — по сроку целиком:
+    // в режимах «Предстоящие» и «Все» здесь лежат задачи разных дней, и
+    // сравнение только по времени, стоявшее раньше, поднимало завтрашнюю
+    // задачу на 09:00 выше сегодняшней на 18:00.
+    final sorted = _filtered..sort(taskComparator(sortMode));
+    // Выполненные — отдельным свёрнутым блоком под списком, как на ПК. Раньше
+    // они лежали вперемешку с активными: способ сортировки про отметку ничего
+    // не знает, поэтому сделанное утром стояло между двумя несделанными.
+    final tasks = sorted.where((t) => t['is_completed'] != true).toList();
+    final completedTasks = sorted.where((t) => t['is_completed'] == true).toList();
+
+    Widget buildRow(Map<String, dynamic> task) => SwipeToDeleteTaskRow(
+          task: task,
+          currentLang: widget.currentLang,
+          showDate: _filter != _TaskFilter.today,
+          priorityColor: widget.getPriorityColor(task['priority']),
+          subtaskStats: widget.getSubtaskStats(task['id']),
+          overdue: widget.isOverdue(task),
+          onToggle: () => widget.onToggle(task),
+          onConfirmedDelete: () => widget.onDelete(task['id']),
+          onTap: () => widget.onTap(task),
+          onQuickUpdateTask: (updates) => widget.onQuickUpdateTask(task['id'], updates),
+        );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -137,6 +178,15 @@ class _MobileTasksScreenState extends State<MobileTasksScreen> {
                     // пустое состояние оказываются на разной высоте между вкладками.
                     Opacity(opacity: 0, child: Text('.', style: TextStyle(fontSize: 13, color: t.text3))),
                   ],
+                ),
+              ),
+              // Только значок: в шапке рядом уже стоит поиск, и подпись
+              // текущего способа вытолкнула бы его за край экрана.
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: ClarifySortSelector(
+                  currentLang: widget.currentLang,
+                  iconOnly: true,
                 ),
               ),
               IconButton(
@@ -198,7 +248,7 @@ class _MobileTasksScreenState extends State<MobileTasksScreen> {
         ),
         const SizedBox(height: 4),
         Expanded(
-          child: tasks.isEmpty
+          child: tasks.isEmpty && completedTasks.isEmpty
               ? Center(
                   child: Padding(
                     padding: const EdgeInsets.all(32),
@@ -234,6 +284,16 @@ class _MobileTasksScreenState extends State<MobileTasksScreen> {
                   // элемент к тому же наезжал на крестик удаления.
                   buildDefaultDragHandles: false,
                   itemCount: tasks.length,
+                  // Блок выполненных — подвалом списка, а не отдельным
+                  // прокручиваемым блоком под ним: иначе на экране появилось бы
+                  // две независимые прокрутки.
+                  footer: completedTasks.isEmpty
+                      ? null
+                      : ClarifyCompletedGroup(
+                          currentLang: widget.currentLang,
+                          tasks: completedTasks,
+                          buildTaskCard: buildRow,
+                        ),
                   // onReorderItem вместо устаревшего onReorder: он сам
                   // пересчитывает newIndex с учётом уже вынутого элемента,
                   // поэтому прежняя ручная поправка `if (newIndex > oldIndex)
@@ -244,6 +304,10 @@ class _MobileTasksScreenState extends State<MobileTasksScreen> {
                       final item = tasks.removeAt(oldIndex);
                       tasks.insert(newIndex, item);
                     });
+                    // Порядок надо ещё и сохранить: до 09.09.2026 перетаскивание
+                    // меняло только этот список в памяти, и всё возвращалось
+                    // назад при первом же обновлении.
+                    widget.onReorderSaved(tasks);
                   },
                   itemBuilder: (context, index) {
                     final task = tasks[index];
@@ -253,18 +317,7 @@ class _MobileTasksScreenState extends State<MobileTasksScreen> {
                       child: ReorderableDelayedDragStartListener(
                         key: ValueKey(task['id'].toString()),
                         index: index,
-                        child: SwipeToDeleteTaskRow(
-                          task: task,
-                          currentLang: widget.currentLang,
-                          showDate: _filter != _TaskFilter.today,
-                          priorityColor: widget.getPriorityColor(task['priority']),
-                          subtaskStats: widget.getSubtaskStats(task['id']),
-                          overdue: widget.isOverdue(task),
-                          onToggle: () => widget.onToggle(task),
-                          onConfirmedDelete: () => widget.onDelete(task['id']),
-                          onTap: () => widget.onTap(task),
-                          onQuickUpdateTask: (updates) => widget.onQuickUpdateTask(task['id'], updates),
-                        ),
+                        child: buildRow(task),
                       ),
                     );
                   },

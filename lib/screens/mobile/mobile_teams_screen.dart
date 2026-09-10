@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../core/localization.dart';
+import '../../core/task_sort.dart';
 import '../../core/theme/design_tokens.dart';
 import '../../widgets/clarify_button.dart';
 import 'widgets/swipe_to_delete_task_row.dart';
@@ -195,7 +196,9 @@ class _WorkspaceDetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = context.tokens;
-    final sorted = [...tasks]..sort((a, b) => (a['due_time'] ?? '23:59').compareTo(b['due_time'] ?? '23:59'));
+    // По сроку целиком: задачи команды одним днём не ограничены, а сравнение
+    // только по времени ставило завтрашнюю раньше сегодняшней.
+    final sorted = [...tasks]..sort(compareTasksByDue);
 
     return Scaffold(
       backgroundColor: t.bg,

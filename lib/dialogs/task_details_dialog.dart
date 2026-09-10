@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import '../services/attachment_service.dart';
+import '../widgets/clarify_attachments.dart';
 import '../widgets/clarify_duration_chips.dart';
 import '../widgets/clarify_surface.dart';
 import '../widgets/clarify_task_checkbox.dart';
@@ -155,6 +157,18 @@ void showTaskDetailsDialog({
                           )
                         ),
                       ],
+                      // ВЛОЖЕНИЯ — только просмотр и открытие. Прикладывать и
+                      // убирать файлы, как и добавлять пункты чек-листа, можно
+                      // в окне редактирования: здесь окно деталей.
+                      // Раздел сам прячется, если вложений нет.
+                      if (task['id'] != null) ...[
+                        const SizedBox(height: 24),
+                        ClarifyAttachments(
+                          owner: AttachmentOwner.task(task['id'] as int),
+                          currentLang: currentLang,
+                        ),
+                      ],
+
                       const SizedBox(height: 32), Divider(color: glassBorderColor), const SizedBox(height: 16),
 
                       // ЧЕК-ЛИСТ (ПОДЗАДАЧИ)

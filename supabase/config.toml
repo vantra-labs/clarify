@@ -423,3 +423,16 @@ entrypoint = "./functions/vk-auth/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/vk-auth/*.html" ]
+
+# Бэкенд приложения, переехавший с Render (см. functions/api/index.ts).
+#
+# verify_jwt = false обязателен, и это не ослабление защиты: сюда приходят
+# запросы, у которых сессии Supabase быть не может в принципе — обмен кода
+# Яндекса на вход (человек ещё не залогинен), вебхук Telegram и планировщик
+# напоминаний. Каждый маршрут проверяет вызывающего сам: пользовательские —
+# через getCurrentUserId, вебхук — по секрету Telegram, служебные — по
+# X-Internal-Token. Проверка на шлюзе просто отбивала бы их все скопом.
+[functions.api]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/api/index.ts"

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
+import 'task_sort.dart';
+
 /// Плоский доступ к пользовательским настройкам (Hive-бокс `settings`,
 /// открыт в main.dart до runApp). [accentPresetIndex]/[reducedMotionOverride]
 /// — ValueNotifier, а не просто значения в боксе: диалог настроек аккаунта
@@ -110,5 +112,40 @@ class AppSettings {
   static void setCompactDensity(bool value) {
     compactDensity.value = value;
     _box.put('compact_density', value);
+  }
+
+  /// Способ сортировки списка задач.
+  ///
+  /// Один на всё приложение, а не свой в каждом разделе: разделы у Clarify —
+  /// это фильтры над одним списком задач, и «в проекте по названию, а во
+  /// входящих по сроку» человеку пришлось бы держать в голове. Через
+  /// ValueNotifier по той же причине, что и настройки выше: список задач
+  /// рисуется из нескольких мест, и прокидывать колбэк в каждое незачем.
+  static final ValueNotifier<TaskSortMode> taskSortMode =
+      ValueNotifier<TaskSortMode>(
+    TaskSortModeInfo.fromStorage(
+      Hive.box('settings').get('task_sort_mode') as String?,
+    ),
+  );
+  static void setTaskSortMode(TaskSortMode value) {
+    taskSortMode.value = value;
+    _box.put('task_sort_mode', value.storageKey);
+  }
+
+  /// Раскрыт ли блок выполненных задач в списках.
+  ///
+  /// По умолчанию свёрнут: выполненные лежали отдельным блоком внизу, но на
+  /// длинной истории это десятки строк, через которые надо прокручивать, чтобы
+  /// дойти до конца активных. Свёрнутый блок оставляет их на месте и на виду
+  /// («Выполнено: 14»), но убирает из-под ног.
+  ///
+  /// Состояние запоминается: кто работает с открытым блоком, не должен
+  /// открывать его заново при каждом переключении раздела.
+  static final ValueNotifier<bool> completedExpanded = ValueNotifier<bool>(
+    Hive.box('settings').get('completed_expanded', defaultValue: false) as bool,
+  );
+  static void setCompletedExpanded(bool value) {
+    completedExpanded.value = value;
+    _box.put('completed_expanded', value);
   }
 }

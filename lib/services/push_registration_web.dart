@@ -27,7 +27,13 @@ class PushRegistrationWeb {
         return 'Service Worker не поддерживается браузером';
       }
 
-      final registration = await serviceWorkerContainer.register('/push_sw.js');
+      // Путь ОТНОСИТЕЛЬНЫЙ, а не от корня домена. С 08.09.2026 веб-версия
+      // живёт не в корне (vantra-labs.github.io/app/), и '/push_sw.js' указывал
+      // бы на корень сайта, где этого файла нет — регистрация падала бы с 404,
+      // а вместе с ней и вся подписка на уведомления. Относительный путь
+      // одинаково верен и в корне, и в подпапке, и заодно задаёт область
+      // видимости воркера по месту приложения, а не на весь сайт.
+      final registration = await serviceWorkerContainer.register('push_sw.js');
 
       final permission = await html.Notification.requestPermission();
       if (permission != 'granted') {
@@ -90,7 +96,9 @@ class PushRegistrationWeb {
       final serviceWorkerContainer = html.window.navigator.serviceWorker;
       if (serviceWorkerContainer == null) return null;
 
-      final registration = await serviceWorkerContainer.getRegistration('/push_sw.js');
+      // Тот же относительный путь, что и при регистрации выше — иначе отписка
+      // искала бы воркера не там, где он на самом деле зарегистрирован.
+      final registration = await serviceWorkerContainer.getRegistration('push_sw.js');
 
       final pushManager = registration.pushManager;
       if (pushManager == null) return null;

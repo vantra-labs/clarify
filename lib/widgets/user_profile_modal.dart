@@ -88,7 +88,7 @@ class _UserProfileModalState extends State<_UserProfileModal> {
         if (response.toString().startsWith('Успех')) setState(() => _friendshipStatus = 'pending_sent');
       }
     } catch (e) {
-      if (mounted) ClarifyToast.show(context, 'Ошибка сети: $e', variant: ClarifyToastVariant.danger);
+      if (mounted) ClarifyToast.show(context, '${'Ошибка сети: '.tr(widget.currentLang)}$e', variant: ClarifyToastVariant.danger);
     } finally {
       if (mounted) setState(() => _isActing = false);
     }

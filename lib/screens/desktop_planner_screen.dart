@@ -194,7 +194,9 @@ class _DesktopPlannerScreenState extends State<DesktopPlannerScreen> {
 
   String? activeTagFilter;
   String? activePriorityFilter;
-  bool sortByPriority = false;
+  // Способ сортировки переехал в AppSettings.taskSortMode: он общий с
+  // мобильным и переживает перезапуск, а прежний флаг жил только в памяти
+  // этого экрана и сбрасывался при каждом запуске.
 
   late Box _settingsBox;
 
@@ -975,7 +977,7 @@ class _DesktopPlannerScreenState extends State<DesktopPlannerScreen> {
       setState(() { chatMessages.add({'role': 'ai', 'text': reply}); isAiTyping = false; });
     } on AiParseHttpException catch (e) {
       final body = e.body.substring(0, e.body.length > 120 ? 120 : e.body.length);
-      setState(() { chatMessages.add({'role': 'ai', 'text': 'Ошибка: сервер вернул ${e.statusCode} ($body)'}); isAiTyping = false; });
+      setState(() { chatMessages.add({'role': 'ai', 'text': '${'Ошибка: сервер вернул '.tr(widget.currentLang)}${e.statusCode} ($body)'}); isAiTyping = false; });
     } catch (e) {
       // Раньше здесь был только общий текст "Ошибка связи с ИИ." без деталей —
       // при живой отладке по скриншотам от пользователя не видно, что за
@@ -1018,7 +1020,7 @@ class _DesktopPlannerScreenState extends State<DesktopPlannerScreen> {
     } on AiParseHttpException catch (e) {
       setState(() => isAiTyping = false);
       final body = e.body.substring(0, e.body.length > 120 ? 120 : e.body.length);
-      if (mounted) ClarifyToast.show(context, 'Ошибка: сервер вернул ${e.statusCode} ($body)', variant: ClarifyToastVariant.danger);
+      if (mounted) ClarifyToast.show(context, '${'Ошибка: сервер вернул '.tr(widget.currentLang)}${e.statusCode} ($body)', variant: ClarifyToastVariant.danger);
       return;
     } catch (e) {
       setState(() => isAiTyping = false);
@@ -1054,7 +1056,10 @@ class _DesktopPlannerScreenState extends State<DesktopPlannerScreen> {
     } catch (e) {
       // addTask уже поставил создание в очередь на повтор (TaskService.flushPendingOps) —
       // сообщаем об этом пользователю, а не просто теряем ошибку молча (см. print ниже).
-      logError("Ошибка создания задачи: $e".tr(widget.currentLang));
+      // Без .tr(): это запись в журнал, а не текст человеку. Перевод ей не
+      // нужен, да и не работал — ключ с уже подставленной ошибкой в словаре не
+      // найдётся никогда.
+      logError("Ошибка создания задачи: $e");
       if (mounted) {
         setState(() {
           _pendingOpsCount = _taskService.pendingOpsCount;
@@ -1086,7 +1091,7 @@ class _DesktopPlannerScreenState extends State<DesktopPlannerScreen> {
     } catch (e) {
       // updateTask уже поставил изменение в очередь на повтор (TaskService.flushPendingOps) —
       // сообщаем об этом пользователю, а не просто теряем изменение молча.
-      logError("Ошибка обновления задачи: $e".tr(widget.currentLang));
+      logError("Ошибка обновления задачи: $e");
       if (mounted) {
         setState(() => _pendingOpsCount = _taskService.pendingOpsCount);
         final message = e is PostgrestException
@@ -1168,6 +1173,28 @@ class _DesktopPlannerScreenState extends State<DesktopPlannerScreen> {
       _frozenCompletedRanks.remove(taskId);
       _reorderReleaseTimers.remove(taskId);
     });
+  }
+
+  /// Сохраняет порядок, выставленный перетаскиванием.
+  ///
+  /// Отдельным методом, а не прямо в колбэке: перетаскивание — жест, после
+  /// которого список уже перерисован, и ждать ответа сервера, держа палец,
+  /// незачем. Ошибку показываем тостом, но порядок на экране не откатываем:
+  /// сеть вернётся, очередь в TaskService дошлёт правку, а дёрганый откат
+  /// прямо под рукой раздражает сильнее, чем задержка синхронизации.
+  void _persistManualOrder(List<Map<String, dynamic>> orderedTasks) {
+    unawaited(
+      _taskService.saveManualOrder(orderedTasks).catchError((Object e) {
+        logError('Не удалось сохранить порядок задач: $e');
+        if (mounted) {
+          ClarifyToast.show(
+            context,
+            "Порядок сохранится, когда появится сеть".tr(widget.currentLang),
+            variant: ClarifyToastVariant.warning,
+          );
+        }
+      }),
+    );
   }
 
   Future<void> _toggleTask(Map<String, dynamic> task) async {
@@ -1381,7 +1408,7 @@ void _checkBurnoutWarning(String dateStr) {
     try {
       await _taskService.deleteTask(taskId); // <--- ИСПОЛЬЗУЕМ СЕРВИС
     } catch (e) {
-      logError("Ошибка удаления: $e".tr(widget.currentLang));
+      logError("Ошибка удаления: $e");
       if (mounted) {
         setState(() => _pendingOpsCount = _taskService.pendingOpsCount);
         final message = e is PostgrestException
@@ -1580,6 +1607,7 @@ Map<String, dynamic> _parseSmartInput(String text) {
         onDeleteTask: _deleteTask,
         onTaskTap: _handleTaskTap,
         onQuickUpdateTask: _updateTaskData,
+        onReorderSaved: _persistManualOrder,
         onAddTask: ({DateTime? preselectedDate}) => _showManualAddDialog(preselectedDate: preselectedDate),
         createTaskManually: _createTaskManually,
         onAiParseText: _sendToAiAssistant,
@@ -2010,8 +2038,6 @@ Map<String, dynamic> _parseSmartInput(String text) {
                               onSetProjectIcon: _setProjectIcon,
                               projectColorKeys: _readProjectColorKeys(),
                               onSetProjectColor: _setProjectColor,
-                              sortByPriority: sortByPriority,
-                              onToggleSortByPriority: () => setState(() => sortByPriority = !sortByPriority),
                               frozenCompletedRanks: _frozenCompletedRanks,
                               pendingChatPartnerId: _pendingChatPartnerId,
                               pendingChatPartnerName: _pendingChatPartnerName,
@@ -2036,6 +2062,7 @@ Map<String, dynamic> _parseSmartInput(String text) {
                                   final item = targetTasks.removeAt(oldIndex);
                                   targetTasks.insert(newIndex, item);
                                 });
+                                _persistManualOrder(targetTasks);
                               },
                               // Быстрое добавление строкой (C1). Разбор уже
                               // сделан локально в ClarifyQuickAdd — здесь

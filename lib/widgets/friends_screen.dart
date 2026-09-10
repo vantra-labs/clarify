@@ -82,7 +82,7 @@ class _FriendsScreenState extends State<FriendsScreen> with SingleTickerProvider
         if (response.toString().startsWith('Успех')) _codeController.clear();
       }
     } catch (e) {
-      if (mounted) ClarifyToast.show(context, 'Ошибка сети: $e', variant: ClarifyToastVariant.danger);
+      if (mounted) ClarifyToast.show(context, '${'Ошибка сети: '.tr(widget.currentLang)}$e', variant: ClarifyToastVariant.danger);
     } finally {
       if (mounted) setState(() => _isSending = false);
     }
@@ -96,7 +96,7 @@ class _FriendsScreenState extends State<FriendsScreen> with SingleTickerProvider
       }
       _load();
     } catch (e) {
-      if (mounted) ClarifyToast.show(context, 'Ошибка сети: $e', variant: ClarifyToastVariant.danger);
+      if (mounted) ClarifyToast.show(context, '${'Ошибка сети: '.tr(widget.currentLang)}$e', variant: ClarifyToastVariant.danger);
     }
   }
 

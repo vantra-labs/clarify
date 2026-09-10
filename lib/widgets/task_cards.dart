@@ -948,7 +948,7 @@ class TaskCardBuilders {
         if (!isDone) ...[
           action(
             icon: LucideIcons.arrowRight,
-            tooltip: 'На завтра',
+            tooltip: 'На завтра'.tr(currentLang),
             onPressed: () => onQuickUpdateTask(task['id'], {
               'due_date': _formatDateForTask(
                 DateTime.now().add(const Duration(days: 1)),
@@ -958,7 +958,7 @@ class TaskCardBuilders {
           Builder(
             builder: (pickerContext) => action(
               icon: LucideIcons.calendar,
-              tooltip: 'Изменить дату',
+              tooltip: 'Изменить дату'.tr(currentLang),
               onPressed: () async {
                 final now = DateTime.now();
                 final picked = await showDatePicker(
@@ -978,7 +978,7 @@ class TaskCardBuilders {
         Builder(
           builder: (btnContext) => action(
             icon: LucideIcons.trash2,
-            tooltip: 'Удалить',
+            tooltip: 'Удалить'.tr(currentLang),
             danger: true,
             onPressed: () => ClarifyCollapsingTaskRow.collapseThenRun(
               btnContext,
@@ -1295,7 +1295,7 @@ class TaskCardBuilders {
                             return Padding(
                               padding: const EdgeInsets.only(right: 8),
                               child: Tooltip(
-                                message: "Ответственный: $name",
+                                message: "${'Ответственный: '.tr(currentLang)}$name",
                                 child: CircleAvatar(
                                   radius: 14,
                                   backgroundColor: avatarColor,

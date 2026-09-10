@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.1+2
+version: 1.0.5+6
 
 environment:
   sdk: ^3.12.2
@@ -57,6 +57,20 @@ dependencies:
   animations: ^2.0.11
   record: ^7.1.1
   http_parser: ^4.1.2
+  # Сжатие картинок перед отправкой — главная экономия места и трафика: снимок
+  # с телефона весит 5 МБ, после уменьшения до 1600 точек по длинной стороне —
+  # около 300 КБ при неотличимой на глаз картинке. Чистый Dart, поэтому
+  # одинаково работает на Windows, в браузере и на телефоне; готовые нативные
+  # сжималки вроде flutter_image_compress десктоп не поддерживают, а клиента
+  # у нас три.
+  #
+  # Пересохранение заодно срезает EXIF, а с ним координаты съёмки — хранить
+  # чужие фотографии с геометками не стоит.
+  image: ^4.5.4
+  # SHA-256 содержимого: по нему строится путь в хранилище, поэтому один и тот
+  # же файл, приложенный дважды, физически лежит один раз. Пакет и так
+  # приезжает транзитивно, но раз зовём его напрямую — объявляем явно.
+  crypto: ^3.0.6
   # Ключ шифрования локального кэша Hive — в защищённом хранилище ОС
   # (на Windows DPAPI), см. lib/core/secure_hive.dart.
   flutter_secure_storage: ^9.2.2

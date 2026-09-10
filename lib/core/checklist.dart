@@ -13,8 +13,17 @@ class ChecklistItem {
       ChecklistItem(text: json['text'] as String? ?? '', done: json['done'] == true);
 }
 
+/// Разбирает содержимое колонки `checklist` в список пунктов.
+///
+/// Результат ОБЯЗАН быть изменяемым: диалог редактирования задачи держит его
+/// как рабочее состояние и добавляет/удаляет пункты прямо в нём. Здесь стояло
+/// `const []` — а это неизменяемый список фиксированной длины, и добавление
+/// падало с «Cannot add to an unmodifiable list». Ломалось ровно у задач БЕЗ
+/// чек-листа, то есть у всех, где его пытались завести впервые; там, где
+/// список уже был, всё работало (`.map().toList()` возвращает изменяемый), —
+/// поэтому баг и прожил незамеченным.
 List<ChecklistItem> parseChecklist(dynamic raw) {
-  if (raw is! List) return const [];
+  if (raw is! List) return <ChecklistItem>[];
   return raw.whereType<Map>().map((e) => ChecklistItem.fromJson(Map<String, dynamic>.from(e))).toList();
 }
 

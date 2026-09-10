@@ -190,7 +190,7 @@ const String kPrivacyPolicyRu = '''
 
 12.2. В данном документе будут отражены любые изменения политики обработки персональных данных Оператором. Политика действует бессрочно до замены ее новой версией.
 
-12.3. Актуальная версия Политики в свободном доступе расположена в сети Интернет по адресу https://clarify-frontend.onrender.com/privacy.html.
+12.3. Актуальная версия Политики в свободном доступе расположена в сети Интернет по адресу https://vantra-labs.github.io/privacy.html.
 ''';
 
 const String kPrivacyPolicyEn = '''
@@ -262,5 +262,5 @@ The Operator and anyone else with access to personal data must not disclose or d
 
 ## 12. Final provisions
 
-Users may request clarification about the processing of their data by emailing clarify.plan@mail.ru. Any changes to this policy will be reflected in this document; it remains in effect indefinitely until replaced by a new version. The current version is freely available at https://clarify-frontend.onrender.com/privacy.html.
+Users may request clarification about the processing of their data by emailing clarify.plan@mail.ru. Any changes to this policy will be reflected in this document; it remains in effect indefinitely until replaced by a new version. The current version is freely available at https://vantra-labs.github.io/privacy.html.
 ''';

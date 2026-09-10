@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import '../services/attachment_service.dart';
+import '../widgets/clarify_attachments.dart';
 import '../widgets/clarify_button.dart';
 import '../widgets/clarify_day_load_warning.dart';
 import '../widgets/clarify_duration_chips.dart';
@@ -629,6 +631,28 @@ void showEditTaskDialog({
                   ],
                 ),
               ),
+
+              // ВЛОЖЕНИЯ. Сохраняются сразу, а не по кнопке «Сохранить»: файл
+              // уже уехал в хранилище, и делать вид, что «Отмена» его вернёт,
+              // нечестно. Зато приложенное видно мгновенно, а лишнее снимается
+              // крестиком на плитке.
+              if (task['id'] != null) ...[
+                const SizedBox(height: 16),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: t.surfaceSunken,
+                    borderRadius: BorderRadius.circular(ClarifyRadius.md),
+                    border: Border.all(color: t.border),
+                  ),
+                  child: ClarifyAttachments(
+                    owner: AttachmentOwner.task(task['id'] as int),
+                    currentLang: currentLang,
+                    canEdit: true,
+                  ),
+                ),
+              ],
 
               if (task['workspace_id'] != null) ...[
                 const SizedBox(height: 12),

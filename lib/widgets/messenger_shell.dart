@@ -3,7 +3,9 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/localization.dart';
 import '../core/theme/design_tokens.dart';
+import '../services/attachment_service.dart';
 import 'chat_message_widgets.dart';
+import 'clarify_attachments.dart';
 import 'clarify_illustrations.dart';
 import 'clarify_toast.dart';
 import 'icon_picker_dialog.dart';
@@ -399,6 +401,7 @@ class _DirectChatPaneState extends State<_DirectChatPane> {
   final _scrollController = ScrollController();
   final Map<dynamic, GlobalKey> _messageKeys = {};
   List<Map<String, dynamic>>? _messages;
+  ChatAttachments _attachments = ChatAttachments.empty;
   RealtimeChannel? _channel;
   Map<String, dynamic>? _replyingTo;
   Map<String, dynamic>? _editingMessage;
@@ -453,36 +456,52 @@ class _DirectChatPaneState extends State<_DirectChatPane> {
           .or('and(from_id.eq.$_myId,to_id.eq.${widget.partnerId}),and(from_id.eq.${widget.partnerId},to_id.eq.$_myId)')
           .order('created_at', ascending: true);
       if (mounted) {
-        setState(() => _messages = List<Map<String, dynamic>>.from(data));
+        final messages = List<Map<String, dynamic>>.from(data);
+        setState(() => _messages = messages);
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (_scrollController.hasClients) _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
         });
+        final attachments = await loadChatAttachments(
+          column: 'message_id',
+          messageIds: messages.map((m) => (m['id'] as num).toInt()).toList(),
+        );
+        if (mounted) setState(() => _attachments = attachments);
       }
     } on PostgrestException {
       if (mounted) setState(() => _messages = []);
     }
   }
 
-  Future<void> _submit(String text) async {
+  Future<void> _submit(String text, List<AttachmentDraft> attachments) async {
     if (_editingMessage != null) {
       await _editMessage((_editingMessage!['id'] as num).toInt(), text);
     } else {
-      await _sendMessage(text);
+      await _sendMessage(text, attachments);
     }
   }
 
-  Future<void> _sendMessage(String text) async {
+  Future<void> _sendMessage(String text, List<AttachmentDraft> attachments) async {
     try {
-      await Supabase.instance.client.from('messages').insert({
+      // Нужен номер вставленного сообщения: к нему привязываются вложения.
+      final inserted = await Supabase.instance.client.from('messages').insert({
         'from_id': _myId,
         'to_id': widget.partnerId,
         'text': text,
         if (_replyingTo != null) 'reply_to_id': _replyingTo!['id'],
-      });
+      }).select('id').single();
       if (mounted) setState(() => _replyingTo = null);
+      if (attachments.isNotEmpty) {
+        final failed = await uploadAttachmentDrafts(
+          drafts: attachments,
+          owner: AttachmentOwner.message((inserted['id'] as num).toInt()),
+        );
+        if (failed.isNotEmpty && mounted) {
+          ClarifyToast.show(context, '${'Не отправились файлы: '.tr(widget.currentLang)}${failed.join(', ')}', variant: ClarifyToastVariant.danger);
+        }
+      }
       await _load();
     } on PostgrestException catch (e) {
-      if (mounted) ClarifyToast.show(context, 'Ошибка отправки: ${e.message}', variant: ClarifyToastVariant.danger);
+      if (mounted) ClarifyToast.show(context, '${'Ошибка отправки: '.tr(widget.currentLang)}${e.message}', variant: ClarifyToastVariant.danger);
     }
   }
 
@@ -492,7 +511,7 @@ class _DirectChatPaneState extends State<_DirectChatPane> {
       if (mounted) setState(() => _editingMessage = null);
       await _load();
     } on PostgrestException catch (e) {
-      if (mounted) ClarifyToast.show(context, 'Ошибка редактирования: ${e.message}', variant: ClarifyToastVariant.danger);
+      if (mounted) ClarifyToast.show(context, '${'Ошибка редактирования: '.tr(widget.currentLang)}${e.message}', variant: ClarifyToastVariant.danger);
     }
   }
 
@@ -501,7 +520,7 @@ class _DirectChatPaneState extends State<_DirectChatPane> {
       await Supabase.instance.client.rpc('delete_message', params: {'message_id': id});
       await _load();
     } on PostgrestException catch (e) {
-      if (mounted) ClarifyToast.show(context, 'Ошибка удаления: ${e.message}', variant: ClarifyToastVariant.danger);
+      if (mounted) ClarifyToast.show(context, '${'Ошибка удаления: '.tr(widget.currentLang)}${e.message}', variant: ClarifyToastVariant.danger);
     }
   }
 
@@ -510,7 +529,7 @@ class _DirectChatPaneState extends State<_DirectChatPane> {
       await Supabase.instance.client.rpc('toggle_pin_message', params: {'message_id': id});
       await _load();
     } on PostgrestException catch (e) {
-      if (mounted) ClarifyToast.show(context, 'Ошибка: ${e.message}', variant: ClarifyToastVariant.danger);
+      if (mounted) ClarifyToast.show(context, '${'Ошибка: '.tr(widget.currentLang)}${e.message}', variant: ClarifyToastVariant.danger);
     }
   }
 
@@ -582,6 +601,7 @@ class _DirectChatPaneState extends State<_DirectChatPane> {
                         replyToMessage: replyTo,
                         replyToSenderLabel: replyTo == null ? '' : (replyTo['from_id'] == _myId ? 'Вы'.tr(widget.currentLang) : widget.partnerName),
                         onOpenActions: () => _openActions(m),
+                        attachments: _attachments,
                       ),
                     );
                   },
@@ -618,6 +638,7 @@ class _TeamChatPaneState extends State<_TeamChatPane> {
   final _scrollController = ScrollController();
   final Map<dynamic, GlobalKey> _messageKeys = {};
   List<Map<String, dynamic>>? _messages;
+  ChatAttachments _attachments = ChatAttachments.empty;
   RealtimeChannel? _channel;
   Map<String, dynamic>? _replyingTo;
   Map<String, dynamic>? _editingMessage;
@@ -665,10 +686,16 @@ class _TeamChatPaneState extends State<_TeamChatPane> {
     try {
       final data = await Supabase.instance.client.rpc('list_workspace_messages', params: {'ws_id': widget.workspaceId});
       if (mounted) {
-        setState(() => _messages = List<Map<String, dynamic>>.from(data));
+        final messages = List<Map<String, dynamic>>.from(data);
+        setState(() => _messages = messages);
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (_scrollController.hasClients) _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
         });
+        final attachments = await loadChatAttachments(
+          column: 'workspace_message_id',
+          messageIds: messages.map((m) => (m['id'] as num).toInt()).toList(),
+        );
+        if (mounted) setState(() => _attachments = attachments);
       }
     } on PostgrestException {
       if (mounted) setState(() => _messages = []);
@@ -681,26 +708,36 @@ class _TeamChatPaneState extends State<_TeamChatPane> {
     return (name == null || name.isEmpty) ? 'Без имени'.tr(widget.currentLang) : name;
   }
 
-  Future<void> _submit(String text) async {
+  Future<void> _submit(String text, List<AttachmentDraft> attachments) async {
     if (_editingMessage != null) {
       await _editMessage((_editingMessage!['id'] as num).toInt(), text);
     } else {
-      await _sendMessage(text);
+      await _sendMessage(text, attachments);
     }
   }
 
-  Future<void> _sendMessage(String text) async {
+  Future<void> _sendMessage(String text, List<AttachmentDraft> attachments) async {
     try {
-      await Supabase.instance.client.from('workspace_messages').insert({
+      // Нужен номер вставленного сообщения: к нему привязываются вложения.
+      final inserted = await Supabase.instance.client.from('workspace_messages').insert({
         'workspace_id': widget.workspaceId,
         'from_id': _myId,
         'text': text,
         if (_replyingTo != null) 'reply_to_id': _replyingTo!['id'],
-      });
+      }).select('id').single();
       if (mounted) setState(() => _replyingTo = null);
+      if (attachments.isNotEmpty) {
+        final failed = await uploadAttachmentDrafts(
+          drafts: attachments,
+          owner: AttachmentOwner.workspaceMessage((inserted['id'] as num).toInt()),
+        );
+        if (failed.isNotEmpty && mounted) {
+          ClarifyToast.show(context, '${'Не отправились файлы: '.tr(widget.currentLang)}${failed.join(', ')}', variant: ClarifyToastVariant.danger);
+        }
+      }
       await _load();
     } on PostgrestException catch (e) {
-      if (mounted) ClarifyToast.show(context, 'Ошибка отправки: ${e.message}', variant: ClarifyToastVariant.danger);
+      if (mounted) ClarifyToast.show(context, '${'Ошибка отправки: '.tr(widget.currentLang)}${e.message}', variant: ClarifyToastVariant.danger);
     }
   }
 
@@ -710,7 +747,7 @@ class _TeamChatPaneState extends State<_TeamChatPane> {
       if (mounted) setState(() => _editingMessage = null);
       await _load();
     } on PostgrestException catch (e) {
-      if (mounted) ClarifyToast.show(context, 'Ошибка редактирования: ${e.message}', variant: ClarifyToastVariant.danger);
+      if (mounted) ClarifyToast.show(context, '${'Ошибка редактирования: '.tr(widget.currentLang)}${e.message}', variant: ClarifyToastVariant.danger);
     }
   }
 
@@ -719,7 +756,7 @@ class _TeamChatPaneState extends State<_TeamChatPane> {
       await Supabase.instance.client.rpc('delete_workspace_message', params: {'message_id': id});
       await _load();
     } on PostgrestException catch (e) {
-      if (mounted) ClarifyToast.show(context, 'Ошибка удаления: ${e.message}', variant: ClarifyToastVariant.danger);
+      if (mounted) ClarifyToast.show(context, '${'Ошибка удаления: '.tr(widget.currentLang)}${e.message}', variant: ClarifyToastVariant.danger);
     }
   }
 
@@ -728,7 +765,7 @@ class _TeamChatPaneState extends State<_TeamChatPane> {
       await Supabase.instance.client.rpc('toggle_pin_workspace_message', params: {'message_id': id});
       await _load();
     } on PostgrestException catch (e) {
-      if (mounted) ClarifyToast.show(context, 'Ошибка: ${e.message}', variant: ClarifyToastVariant.danger);
+      if (mounted) ClarifyToast.show(context, '${'Ошибка: '.tr(widget.currentLang)}${e.message}', variant: ClarifyToastVariant.danger);
     }
   }
 
@@ -802,6 +839,7 @@ class _TeamChatPaneState extends State<_TeamChatPane> {
                         replyToMessage: replyTo,
                         replyToSenderLabel: replyTo == null ? '' : _senderLabel(replyTo),
                         onOpenActions: () => _openActions(m),
+                        attachments: _attachments,
                       ),
                     );
                   },

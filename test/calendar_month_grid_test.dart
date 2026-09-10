@@ -3,6 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/core/theme/design_tokens.dart';
 import 'package:frontend/widgets/clarify_glass.dart';
 import 'package:frontend/widgets/main_content_area.dart';
+
+import 'helpers/settings_box.dart';
 import 'package:frontend/widgets/task_cards.dart';
 
 // Регрессия 2026-08-01: живой отчёт пользователя — в ячейке дня с 2 задачами
@@ -19,6 +21,9 @@ import 'package:frontend/widgets/task_cards.dart';
 // раньше без ведома гонял узкий compact-путь раскладки (<1100px), а не
 // обычный десктопный, и однажды поймал ложный провал именно по этой причине).
 void main() {
+  // MainContentArea читает выбранный способ сортировки из настроек.
+  useSettingsBox();
+
   testWidgets('в ячейке месяца с 3 задачами видны все 3, без переполнения', (tester) async {
     final today = DateTime.now();
     String fmt(DateTime d) => "${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}.${d.year}";
@@ -90,8 +95,6 @@ void main() {
             onSetProjectIcon: (_, _) {},
             projectColorKeys: const {},
             onSetProjectColor: (_, _) {},
-            sortByPriority: false,
-            onToggleSortByPriority: () {},
           ),
         ),
       ),
@@ -187,8 +190,6 @@ void main() {
             onSetProjectIcon: (_, _) {},
             projectColorKeys: const {},
             onSetProjectColor: (_, _) {},
-            sortByPriority: false,
-            onToggleSortByPriority: () {},
           ),
         ),
       ),

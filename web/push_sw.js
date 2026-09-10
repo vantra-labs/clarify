@@ -17,11 +17,16 @@ self.addEventListener('push', (event) => {
     }
   }
 
+  // Пути ОТНОСИТЕЛЬНЫЕ, а не от корня домена: с 08.09.2026 веб-версия живёт в
+  // подпапке (vantra-labs.github.io/app/), и '/icons/...' указывал бы в корень
+  // сайта, где иконок нет — уведомление приходило бы без картинки. В Service
+  // Worker относительный путь считается от места самого воркера, то есть от
+  // папки приложения, и одинаково верен и в корне, и в подпапке.
   event.waitUntil(
     self.registration.showNotification(payload.title || 'Clarify', {
       body: payload.body || '',
-      icon: '/icons/Icon-192.png',
-      badge: '/icons/Icon-192.png',
+      icon: 'icons/Icon-192.png',
+      badge: 'icons/Icon-192.png',
     })
   );
 });
@@ -33,7 +38,9 @@ self.addEventListener('notificationclick', (event) => {
       for (const client of windowClients) {
         if ('focus' in client) return client.focus();
       }
-      if (clients.openWindow) return clients.openWindow('/');
+      // './' — папка приложения, а не корень домена: по клику на уведомление
+      // должно открываться приложение, а не сайт-витрина вокруг него.
+      if (clients.openWindow) return clients.openWindow('./');
     })
   );
 });

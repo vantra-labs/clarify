@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import '../core/app_settings.dart';
 import '../core/clarify_date_format.dart';
 import '../core/config.dart';
-import '../core/priority.dart';
 import '../core/localization.dart';
 import '../core/quick_parse.dart';
 import '../core/tags.dart';
+import '../core/task_sort.dart';
 import '../core/theme/design_tokens.dart';
 import 'calendar_day_timeline.dart';
 import 'clarify_cascade_item.dart';
+import 'clarify_completed_group.dart';
 import 'clarify_day_load_warning.dart' show ClarifyDayCapacity, dayLoadMinutes;
+import 'clarify_sort_selector.dart';
 import 'about_screen.dart';
 import 'clarify_illustrations.dart';
 import 'clarify_task_skeleton.dart';
@@ -107,8 +110,11 @@ class MainContentArea extends StatelessWidget {
   // Сортировка плоских списков — по времени (дефолт) или по приоритету
   // (MISSING_FEATURES P1.3). Не применяется во "Входящих" — там порядок
   // задаётся вручную перетаскиванием (см. комментарий у ReorderableListView ниже).
-  final bool sortByPriority;
-  final VoidCallback onToggleSortByPriority;
+  // Способ сортировки больше не прокидывается сюда параметром: он один на всё
+  // приложение и живёт в AppSettings.taskSortMode, откуда его читают и
+  // десктопный список, и мобильный. Раньше здесь был флаг sortByPriority на
+  // два состояния — прокидывать пять значений и колбэк смены через все экраны
+  // означало бы то же самое, только длиннее.
 
   /// Первая загрузка с сервера ещё идёт (D3) — вместо пустого состояния
   /// показываем силуэты строк. «Задач нет» и «задачи ещё едут» выглядели
@@ -160,8 +166,6 @@ class MainContentArea extends StatelessWidget {
     required this.onSetProjectIcon,
     required this.projectColorKeys,
     required this.onSetProjectColor,
-    required this.sortByPriority,
-    required this.onToggleSortByPriority,
     this.onQuickCreate,
     this.loading = false,
     this.frozenCompletedRanks = const {},
@@ -172,6 +176,16 @@ class MainContentArea extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Подписка на выбранный способ сортировки — здесь, снаружи всего
+    // содержимого: список задач собирается глубоко внутри, и без перерисовки
+    // всей области смена режима в меню не доехала бы до него.
+    return ValueListenableBuilder<TaskSortMode>(
+      valueListenable: AppSettings.taskSortMode,
+      builder: (context, sortMode, _) => _buildContent(context, sortMode),
+    );
+  }
+
+  Widget _buildContent(BuildContext context, TaskSortMode sortMode) {
     final t = isDark ? ClarifyTokens.dark : ClarifyTokens.light;
     final textColor = t.text;
     final textMuted = t.text2;
@@ -274,17 +288,29 @@ class MainContentArea extends StatelessWidget {
         return _taskIdOf(b).compareTo(_taskIdOf(a));
       }
 
-      final effectiveSortByPriority = sortByPriority && selectedMenu != 'Входящие';
+      // Во «Входящих» лежат задачи без срока и, как правило, без приоритета —
+      // любой способ, кроме ручного, дал бы там один и тот же список.
+      final effectiveMode =
+          selectedMenu == 'Входящие' && sortMode != TaskSortMode.manual
+              ? TaskSortMode.due
+              : sortMode;
+      final compare = taskComparator(effectiveMode);
+
       targetTasks.sort((a, b) {
+        // Выполненные — всегда отдельным блоком внизу, независимо от способа
+        // сортировки: это не «ещё один порядок», а разделение на «делать» и
+        // «сделано». Внутри блока свой порядок — по моменту отметки.
         final doneCompare = completedRank(a).compareTo(completedRank(b));
         if (doneCompare != 0) return doneCompare;
         if (completedRank(a) == 1) return completedBlockCompare(a, b);
-        if (effectiveSortByPriority) {
-          final rankCompare = priorityRank(a['priority']).compareTo(priorityRank(b['priority']));
-          if (rankCompare != 0) return rankCompare;
-        }
-        final timeCompare = (a['due_time'] ?? '23:59').compareTo(b['due_time'] ?? '23:59');
-        if (timeCompare != 0) return timeCompare;
+
+        // Раньше здесь сравнивалось ТОЛЬКО время, из-за чего в списках с
+        // задачами разных дней («Все задачи», проект по тегу) завтрашняя задача
+        // на 09:00 вставала выше сегодняшней на 18:00. У блока выполненных выше
+        // дата в сравнении была, у активных её забыли — жалоба владельца
+        // 09.09.2026.
+        final byMode = compare(a, b);
+        if (byMode != 0) return byMode;
         return sameTimeTiebreak(a, b);
       });
       // Быстрое добавление строкой (C1). Показывается в плоских списках задач,
@@ -385,30 +411,15 @@ class MainContentArea extends StatelessWidget {
             )
           : null;
 
+      // Во «Входящих» выбор не показываем: там задачи без срока и приоритета,
+      // и любой способ дал бы тот же список (см. effectiveMode выше).
       final sortToggle = selectedMenu == 'Входящие'
           ? null
           : Padding(
               padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
-              child: Row(
-                children: [
-                  Icon(LucideIcons.arrowUpDown, size: 15, color: textMuted),
-                  const SizedBox(width: 8),
-                  GestureDetector(
-                    onTap: sortByPriority ? onToggleSortByPriority : null,
-                    child: Text(
-                      'По времени'.tr(currentLang),
-                      style: TextStyle(color: sortByPriority ? textMuted : t.accent, fontWeight: sortByPriority ? FontWeight.normal : FontWeight.bold, fontSize: 13),
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  GestureDetector(
-                    onTap: sortByPriority ? null : onToggleSortByPriority,
-                    child: Text(
-                      'По приоритету'.tr(currentLang),
-                      style: TextStyle(color: sortByPriority ? t.accent : textMuted, fontWeight: sortByPriority ? FontWeight.bold : FontWeight.normal, fontSize: 13),
-                    ),
-                  ),
-                ],
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: ClarifySortSelector(currentLang: currentLang, scale: scale),
               ),
             );
 
@@ -471,6 +482,13 @@ class MainContentArea extends StatelessWidget {
           ),
         );
       } else {
+        // Выполненные отделяются от активных по тому же ранжированию, что и
+        // сортировка выше, — значит на время анимации отметки строка ещё
+        // считается активной и уезжает в блок выполненных уже после неё, а не
+        // исчезает из-под пальца.
+        final activeTasks = targetTasks.where((t) => completedRank(t) == 0).toList();
+        final completedTasks = targetTasks.where((t) => completedRank(t) == 1).toList();
+
         return ClarifyListEntrance(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -483,12 +501,12 @@ class MainContentArea extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 24),
                   children: [
                     // Порядок здесь меняется не только при загрузке, но и прямо
-                    // под пальцем — при отметке "выполнено" задача уезжает в
-                    // блок выполненных вниз. ClarifyReorderFlow превращает эту
-                    // смену мест в видимое движение: отмеченная строка едет
-                    // вниз, соседи синхронно поднимаются на её место.
+                    // под пальцем — при отметке "выполнено" задача уезжает из
+                    // активных вниз. ClarifyReorderFlow превращает эту смену
+                    // мест в видимое движение: соседи синхронно поднимаются на
+                    // освободившееся место.
                     ClarifyReorderFlow(
-                      children: targetTasks.asMap().entries.map((entry) {
+                      children: activeTasks.asMap().entries.map((entry) {
                         return ClarifyCascadeItem(
                           key: ValueKey('cascade_${entry.value['id']}'),
                           index: entry.key,
@@ -496,6 +514,12 @@ class MainContentArea extends StatelessWidget {
                         );
                       }).toList(),
                     ),
+                    if (completedTasks.isNotEmpty)
+                      ClarifyCompletedGroup(
+                        currentLang: currentLang,
+                        tasks: completedTasks,
+                        buildTaskCard: buildListTaskCard,
+                      ),
                   ],
                 ),
               ),

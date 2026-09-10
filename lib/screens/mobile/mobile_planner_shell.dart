@@ -40,6 +40,10 @@ class MobilePlannerShell extends StatefulWidget {
   final void Function(Map<String, dynamic> task) onTaskTap;
   final void Function(dynamic taskId, Map<String, dynamic> updates)
   onQuickUpdateTask;
+
+  /// Сохранение порядка после перетаскивания — обработчик тот же, что и на
+  /// десктопе: сервис задач один, и очередь отправки при отсутствии сети тоже.
+  final void Function(List<Map<String, dynamic>> orderedTasks) onReorderSaved;
   final void Function({DateTime? preselectedDate}) onAddTask;
   final Future<int?> Function(Map<String, dynamic> taskData) createTaskManually;
   final Future<String> Function(String text, List<Map<String, String>> history) onAiParseText;
@@ -76,6 +80,7 @@ class MobilePlannerShell extends StatefulWidget {
     required this.onDeleteTask,
     required this.onTaskTap,
     required this.onQuickUpdateTask,
+    required this.onReorderSaved,
     required this.onAddTask,
     required this.createTaskManually,
     required this.onAiParseText,
@@ -218,6 +223,7 @@ class _MobilePlannerShellState extends State<MobilePlannerShell> {
           onTap: widget.onTaskTap,
           onQuickUpdateTask: widget.onQuickUpdateTask,
           onQuickCreate: _quickCreate,
+          onReorderSaved: widget.onReorderSaved,
         );
       case MobileTab.teams:
         return MobileTeamsScreen(
