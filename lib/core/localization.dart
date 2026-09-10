@@ -544,6 +544,41 @@ class T {
     'Сервер просыпается. Попробуйте войти ещё раз через полминуты.': {'ru': 'Сервер просыпается. Попробуйте войти ещё раз через полминуты.', 'en': 'The server is waking up. Try signing in again in half a minute.'},
     'Не удалось распознать речь.': {'ru': 'Не удалось распознать речь.', 'en': 'Could not recognise speech.'},
     'Ошибка расшифровки голосового.': {'ru': 'Ошибка расшифровки голосового.', 'en': 'Voice message transcription failed.'},
+
+    // Подключение сторонних нейросетей (MCP)
+    'Подключение нейросетей': {'ru': 'Подключение нейросетей', 'en': 'Connect an AI'},
+    'Подключите Claude, Cursor или другой ИИ к своим задачам — и спрашивайте у него «что у меня на завтра», просите создать или закрыть задачу.': {
+      'ru': 'Подключите Claude, Cursor или другой ИИ к своим задачам — и спрашивайте у него «что у меня на завтра», просите создать или закрыть задачу.',
+      'en': 'Connect Claude, Cursor or another AI to your tasks — then ask it "what do I have tomorrow", have it create or close tasks.',
+    },
+    'Создать ключ': {'ru': 'Создать ключ', 'en': 'Create a key'},
+    'Ключ подключения': {'ru': 'Ключ подключения', 'en': 'Connection key'},
+    'Ключ': {'ru': 'Ключ', 'en': 'Key'},
+    'Адрес сервера': {'ru': 'Адрес сервера', 'en': 'Server address'},
+    'Адрес с ключом': {'ru': 'Адрес с ключом', 'en': 'Address with the key'},
+    'Ключ показывается один раз. Скопируйте его сейчас — второй раз посмотреть будет негде.': {
+      'ru': 'Ключ показывается один раз. Скопируйте его сейчас — второй раз посмотреть будет негде.',
+      'en': 'The key is shown once. Copy it now — there will be nowhere to look it up again.',
+    },
+    'В настройках нейросети укажите адрес сервера и заголовок Authorization: Bearer с этим ключом.': {
+      'ru': 'В настройках нейросети укажите адрес сервера и заголовок Authorization: Bearer с этим ключом.',
+      'en': 'In your AI client settings, give the server address and an Authorization: Bearer header with this key.',
+    },
+    'Если клиент не умеет заголовки — вставьте адрес вместе с ключом:': {
+      'ru': 'Если клиент не умеет заголовки — вставьте адрес вместе с ключом:',
+      'en': 'If your client cannot set headers, paste the address with the key instead:',
+    },
+    'Этот способ проще, но ключ попадает в журналы запросов — он менее безопасен.': {
+      'ru': 'Этот способ проще, но ключ попадает в журналы запросов — он менее безопасен.',
+      'en': 'That way is simpler, but the key ends up in request logs — it is less safe.',
+    },
+    'Нейросеть': {'ru': 'Нейросеть', 'en': 'AI'},
+    'Отозвать': {'ru': 'Отозвать', 'en': 'Revoke'},
+    'Последний раз: ': {'ru': 'Последний раз: ', 'en': 'Last used: '},
+    'ни разу': {'ru': 'ни разу', 'en': 'never'},
+    'Не удалось создать ключ': {'ru': 'Не удалось создать ключ', 'en': 'Could not create the key'},
+    'Не удалось отозвать ключ': {'ru': 'Не удалось отозвать ключ', 'en': 'Could not revoke the key'},
+    'Скопировано': {'ru': 'Скопировано', 'en': 'Copied'},
   };
 }
 

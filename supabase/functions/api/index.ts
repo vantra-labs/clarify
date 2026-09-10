@@ -13,6 +13,7 @@
 import { corsHeaders, errorResponse, json, preflight } from "../_shared/http.ts";
 import { env } from "../_shared/env.ts";
 import { authYandex } from "./routes/auth_yandex.ts";
+import { mcpRoute } from "./routes/mcp.ts";
 import { tasksParse } from "./routes/tasks_parse.ts";
 import { transcribeVoiceRoute } from "./routes/transcribe_voice.ts";
 import {
@@ -107,12 +108,28 @@ const ROUTES: Record<string, Partial<Record<string, Handler>>> = {
   "/internal/notify-event": {
     POST: notifyEvent,
   },
+
+  // MCP-сервера здесь нет намеренно: у него путь с переменной частью
+  // (/mcp/<ключ>), а таблица маршрутов сравнивает путь целиком. Он разбирается
+  // до неё, см. Deno.serve ниже.
 };
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return preflight(req);
 
   const path = routePath(req);
+
+  // Ключ подключения может стоять прямо в адресе (/mcp/<ключ>) — часть
+  // MCP-клиентов умеет только вставить ссылку и не даёт задать заголовки.
+  // Разбирает его сам маршрут, роутеру достаточно узнать путь.
+  if (path === "/mcp" || path.startsWith("/mcp/")) {
+    try {
+      return await mcpRoute(req);
+    } catch (e) {
+      return errorResponse(req, e);
+    }
+  }
+
   const methods = ROUTES[path];
   if (!methods) {
     return json(req, { detail: `Неизвестный путь: ${path}` }, 404);

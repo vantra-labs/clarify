@@ -8,6 +8,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../widgets/clarify_button.dart';
+import '../widgets/clarify_mcp_card.dart';
 import '../widgets/clarify_surface.dart';
 import '../widgets/clarify_toast.dart';
 import 'package:launch_at_startup/launch_at_startup.dart';
@@ -696,6 +697,13 @@ class _AccountSettingsPanelState extends State<AccountSettingsPanel> {
             ],
           ),
         ),
+        const SizedBox(height: 16),
+
+        // --- ПОДКЛЮЧЕНИЕ НЕЙРОСЕТЕЙ (MCP) --- рядом с Telegram-ботом
+        // намеренно: это соседние по смыслу вещи — «доступ к моим задачам
+        // снаружи приложения». Ключ такой же по силе, как код привязки бота:
+        // даёт полный доступ к задачам, поэтому отзывается одним нажатием.
+        ClarifyMcpCard(currentLang: currentLang),
         const SizedBox(height: 16),
 
         // --- ПЕРЕКЛЮЧАТЕЛЬ АВТОЗАПУСКА --- только на десктопе, на мобильном
