@@ -11,7 +11,7 @@
 /// код (ассистент, обёртки Telegram, доступ к базе) не размазан по копиям, и
 /// деплой один.
 import { corsHeaders, errorResponse, json, preflight } from "../_shared/http.ts";
-import { env } from "../_shared/env.ts";
+import { latestRelease } from "../_shared/latest_release.ts";
 import { authYandex } from "./routes/auth_yandex.ts";
 import { mcpRoute } from "./routes/mcp.ts";
 import { tasksParse } from "./routes/tasks_parse.ts";
@@ -50,22 +50,12 @@ const ROUTES: Record<string, Partial<Record<string, Handler>>> = {
   },
 
   "/app/latest-version": {
-    // Какая версия десктопного приложения сейчас актуальна.
-    //
-    // Значения — из переменных окружения, а не из кода: выпуск новой версии не
-    // должен требовать правки исходников бэкенда.
+    // Какая версия десктопного приложения сейчас актуальна: последний релиз
+    // в GitHub, секреты функции — запасной вариант (см. _shared/latest_release.ts).
     //
     // Пустая version означает «обновлений нет», и клиент в этом случае обязан
     // молчать, а не показывать «версия неизвестна» (см. update_service.dart).
-    GET: (req) =>
-      json(req, {
-        version: env("LATEST_APP_VERSION"),
-        url: env("LATEST_APP_URL"),
-        notes: env("LATEST_APP_NOTES"),
-        // Версия, ниже которой работать нельзя (сломанный протокол, отозванный
-        // ключ). Пока пусто и, надеюсь, останется пустым.
-        min_supported: env("MIN_SUPPORTED_APP_VERSION"),
-      }),
+    GET: async (req) => json(req, await latestRelease()),
   },
 
   "/auth/yandex": {

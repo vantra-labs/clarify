@@ -1,0 +1,16 @@
+# Результаты сборки — собираются из исходников одной командой, в репозитории им
+# делать нечего (готовый setup весит 54 МБ).
+build/
+dist/
+
+# Промежуточные файлы компиляции нативной оболочки
+bootstrap/*.obj
+bootstrap/*.res
+bootstrap/*.exe
+bootstrap/*.pdb
+
+# Flutter-часть установщика
+clarify_installer/.dart_tool/
+clarify_installer/build/
+clarify_installer/.flutter-plugins-dependencies
+clarify_installer/windows/flutter/ephemeral/

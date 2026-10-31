@@ -1,0 +1,79 @@
+name: Релиз для Windows
+
+# Собирает установщик Clarify_Setup_<версия>.exe на Windows-раннере и
+# публикует GitHub Release v<версия> с двумя файлами: с версией в имени и без
+# (на Clarify_Setup.exe ведёт постоянная ссылка с сайта
+# .../releases/latest/download/Clarify_Setup.exe). Версия — из pubspec.yaml.
+#
+# Запуск — вручную (поле «notes» — что нового, одна-три строки). Установленные
+# копии узнают об обновлении сами: /app/latest-version читает последний релиз.
+#
+# Установщик НЕ подписан: подписи нет и при ручной сборке, SmartScreen
+# предупреждает. Это отдельная задача — нужен сертификат.
+
+on:
+  workflow_dispatch:
+    inputs:
+      notes:
+        description: 'Что нового (видно в окне обновления)'
+        required: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-windows
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Версия и проверка, что такого релиза ещё нет
+        id: ver
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          v=$(grep -E '^version:' pubspec.yaml | sed -E 's/version: *([0-9]+\.[0-9]+\.[0-9]+).*/\1/')
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          if gh release view "v$v" >/dev/null 2>&1; then
+            echo "::error::Релиз v$v уже есть. Подними version в pubspec.yaml."
+            exit 1
+          fi
+          echo "::notice::Собираю v$v"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: .env с боевого сайта
+        shell: bash
+        run: |
+          curl -fsS https://vantra-labs.github.io/app/assets/.env -o .env
+          grep -q '^SUPABASE_URL=' .env && grep -q '^SUPABASE_ANON_KEY=' .env
+
+      - run: flutter pub get
+
+      - name: Сборка установщика
+        shell: pwsh
+        run: ./installer/build_installer.ps1
+
+      - name: Опубликовать релиз
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          V: ${{ steps.ver.outputs.version }}
+          NOTES: ${{ inputs.notes }}
+        run: |
+          cd installer/dist
+          test -f "Clarify_Setup_$V.exe"
+          cp "Clarify_Setup_$V.exe" Clarify_Setup.exe
+          ls -la
+          gh release create "v$V" "Clarify_Setup_$V.exe" Clarify_Setup.exe \
+            --title "Clarify $V" --notes "$NOTES" --target "$GITHUB_SHA"
+          echo "::notice::Опубликован v$V"
