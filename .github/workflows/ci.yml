@@ -38,10 +38,16 @@ jobs:
       - name: Анализатор (падает только на ошибках)
         run: flutter analyze --no-fatal-infos --no-fatal-warnings
 
-      # --reporter github: каждая упавшая проверка — отдельная аннотация с
-      # текстом ошибки, её видно в API без скачивания полного лога.
+      # Полный лог Actions не всегда можно скачать, поэтому каждая упавшая
+      # проверка выводится отдельной аннотацией с текстом ошибки — её видно
+      # через API и в интерфейсе PR без лога.
       - name: Тесты
-        run: flutter test --reporter github
+        run: |
+          set +e
+          flutter test --reporter json > test-results.jsonl
+          code=$?
+          python3 tool/ci_test_annotations.py test-results.jsonl
+          exit $code
 
       - name: Сборка веба (PWA)
         run: flutter build web --release
