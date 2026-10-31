@@ -1,0 +1,61 @@
+name: Сборка PWA для сайта
+
+# После каждого слияния в master собирает веб-версию под адрес
+# https://vantra-labs.github.io/app/ и кладёт готовые файлы в ветку web-dist
+# этого репозитория. Сайт (vantra-labs/vantra-labs.github.io) забирает их своим
+# воркфлоу «Обновить PWA» — так обходимся без токенов между репозиториями:
+# этот репозиторий публичный, ветка читается без авторизации.
+#
+# Раньше веб выкладывался руками, и PWA отставала от master неделями.
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-web
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      # Адрес проекта и anon-ключ Supabase публичны по своей природе: они и так
+      # лежат в собранном приложении на сайте. Берём их оттуда же, чтобы не
+      # держать ещё одну копию, которая однажды разъедется с настоящей.
+      - name: .env с боевого сайта
+        run: |
+          curl -fsS https://vantra-labs.github.io/app/assets/.env -o .env
+          grep -q '^SUPABASE_URL=' .env && grep -q '^SUPABASE_ANON_KEY=' .env
+
+      - run: flutter pub get
+
+      - name: Сборка
+        run: flutter build web --release --base-href /app/
+
+      - name: Отметка сборки
+        run: |
+          printf '{"commit":"%s","built_at":"%s"}\n' "$GITHUB_SHA" "$(date -u +%FT%TZ)" > build/web/clarify-build.json
+
+      - name: Выложить в ветку web-dist
+        run: |
+          cd build/web
+          git init -q
+          git checkout -q -b web-dist
+          git add -A
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+            commit -q -m "PWA из ${GITHUB_SHA::7}"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" web-dist
+          echo "::notice::web-dist обновлена из ${GITHUB_SHA::7}"
