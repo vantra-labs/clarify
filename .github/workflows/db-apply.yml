@@ -60,15 +60,28 @@ jobs:
           EMAILS: ${{ secrets.ANALYTICS_ADMIN_EMAILS }}
         run: |
           if [ -z "$EMAILS" ]; then echo "ANALYTICS_ADMIN_EMAILS не задан — пропускаю"; exit 0; fi
-          n=$(psql "$DB_URL" -v ON_ERROR_STOP=1 -tA -v emails="$EMAILS" <<'SQL'
-          with ins as (
-            insert into public.analytics_admins (user_id)
-            select u.id from auth.users u
-            where lower(u.email) = any (string_to_array(lower(replace(:'emails', ' ', '')), ','))
+          # Почты в логи не выводятся (репозиторий публичный) — только счётчики.
+          # Любые пробелы и переносы строк из секрета вычищаются: при вставке в
+          # форму GitHub легко прихватить перевод строки.
+          out=$(psql "$DB_URL" -v ON_ERROR_STOP=1 -tA -F ' ' -v emails="$EMAILS" <<'SQL'
+          with wanted as (
+            select distinct e from unnest(string_to_array(lower(regexp_replace(:'emails', '\s', '', 'g')), ',')) e
+            where e <> ''
+          ),
+          found as (
+            select u.id from auth.users u join wanted w on lower(u.email) = w.e
+          ),
+          ins as (
+            insert into public.analytics_admins (user_id) select id from found
             on conflict do nothing
             returning 1
           )
-          select (select count(*) from public.analytics_admins);
+          select (select count(*) from wanted), (select count(*) from found), (select count(*) from ins);
           SQL
           )
-          echo "::notice::Админов аналитики в базе: $n"
+          read wanted found inserted <<< "$out"
+          total=$(psql "$DB_URL" -tA -c "select count(*) from public.analytics_admins")
+          echo "::notice::Почт в секрете: $wanted, найдено пользователей: $found, добавлено сейчас: $inserted, всего админов: $total"
+          if [ "$found" -lt "$wanted" ]; then
+            echo "::warning::Не для всех почт из ANALYTICS_ADMIN_EMAILS есть пользователь. Нужна почта, под которой входишь в Clarify."
+          fi
