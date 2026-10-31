@@ -19,6 +19,8 @@ import '../../widgets/clarify_priority_lever.dart';
 import '../../widgets/clarify_settings_card.dart';
 import '../../widgets/clarify_pressable.dart';
 import '../../widgets/clarify_toast.dart';
+import '../../widgets/analytics_screen.dart';
+import '../../services/analytics.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// "Настройки" — по образцу Structured: сгруппированный список, а не
@@ -82,6 +84,8 @@ class _MobileSettingsScreenState extends State<MobileSettingsScreen> {
   bool showQuickAddDefaults = false;
   bool showCacheDetails = false;
   int _unreadMessagesCount = 0;
+  // Карточка «Аналитика» — только для владельца (analytics_admins).
+  bool _isAnalyticsAdmin = false;
   RealtimeChannel? _messagesChannel;
 
   String get currentLang => widget.currentLang;
@@ -89,6 +93,9 @@ class _MobileSettingsScreenState extends State<MobileSettingsScreen> {
   @override
   void initState() {
     super.initState();
+    Analytics.isAdmin().then((v) {
+      if (mounted && v) setState(() => _isAnalyticsAdmin = true);
+    });
     // Мессенджер скрыт (core/features.dart) — бейдж непрочитанных не нужен,
     // и лишняя realtime-подписка тоже.
     if (!Features.social) return;
@@ -257,6 +264,15 @@ class _MobileSettingsScreenState extends State<MobileSettingsScreen> {
           onTap: widget.onOpenStatistics,
           trailing: Icon(LucideIcons.chevronRight, size: 18, color: t.text3),
         ),
+        if (_isAnalyticsAdmin) ...[
+          const SizedBox(height: 12),
+          ClarifySettingsCard(
+            icon: LucideIcons.chartLine,
+            title: 'Аналитика',
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AnalyticsScreen())),
+            trailing: Icon(LucideIcons.chevronRight, size: 18, color: t.text3),
+          ),
+        ],
         const SizedBox(height: 12),
         ClarifySettingsCard(
           icon: LucideIcons.trash2,

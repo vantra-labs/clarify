@@ -9,7 +9,9 @@
 /// генерации официального документа). RU — юридически определяющая версия;
 /// EN — необязывающий перевод для удобства (см. предупреждение в конце
 /// английского текста).
-const String kPrivacyPolicyVersion = '2026-07-31-v2';
+/// v3 (31.10.2026) — добавлена обезличенная статистика использования (раздел 6),
+/// поэтому согласие спрашивается заново: новая цель и новые данные.
+const String kPrivacyPolicyVersion = '2026-10-31-v3';
 
 const String kPrivacyPolicyRu = '''
 # Политика в отношении обработки персональных данных
@@ -111,13 +113,15 @@ const String kPrivacyPolicyRu = '''
 
 - предоставление доступа Пользователю к сервисам, информации и/или материалам, содержащимся на веб-сайте;
 - заключение, исполнение и прекращение гражданско-правовых договоров (в том числе оформление, оплата и отмена платной Pro-подписки);
-- информирование Пользователя посредством отправки электронных писем.
+- информирование Пользователя посредством отправки электронных писем;
+- улучшение сервиса на основе обезличенной статистики использования.
 
 **Персональные данные:**
 
 - фамилия, имя, отчество;
 - электронный адрес;
-- фотографии.
+- фотографии;
+- сведения об использовании сервиса: факт открытия приложения, способ создания задачи (например, «быстрый ввод» или «окно создания»), тип платформы (веб, Windows и т. п.) и версия приложения. Текст задач и сведения об устройстве в статистику не входят. Эти сведения используются только в обобщённом виде — как общее число пользователей, задач и возвратов в приложение.
 
 **Правовые основания:**
 
@@ -230,9 +234,10 @@ Processing is lawful and fair, limited to specific pre-defined legitimate purpos
 
 - providing the User access to the services, information and/or materials on the website;
 - concluding, performing and terminating civil-law contracts (including subscribing to, paying for, and cancelling the paid Pro plan);
-- informing the User via email.
+- informing the User via email;
+- improving the service based on aggregated usage statistics.
 
-**Personal data processed:** last name, first name, patronymic; email address; photos.
+**Personal data processed:** last name, first name, patronymic; email address; photos; service usage data — the fact of opening the app, how a task was created (e.g. "quick add" or "create dialog"), platform type (web, Windows, etc.) and app version. Task text and device details are not part of these statistics. They are used only in aggregate — as overall counts of users, tasks and returning visits.
 
 **Legal basis:** contracts between the Operator and the data subject; Federal Law No. 152-FZ of 27.07.2006 "On Personal Data" (consent of the data subject, Art. 6).
 
