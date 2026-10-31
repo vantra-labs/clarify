@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../core/features.dart';
 import '../core/localization.dart';
 import '../core/theme/design_tokens.dart';
 import 'clarify_button.dart';
@@ -64,7 +65,11 @@ class _UserProfileModalState extends State<_UserProfileModal> {
     _isSelf = me == widget.userId;
     try {
       final profile = await Supabase.instance.client.from('profiles').select().eq('user_id', widget.userId).maybeSingle();
-      final status = _isSelf ? 'self' : await Supabase.instance.client.rpc('get_friendship_status', params: {'other_id': widget.userId}) as String;
+      final status = _isSelf
+          ? 'self'
+          : !Features.social
+              ? 'none'
+              : await Supabase.instance.client.rpc('get_friendship_status', params: {'other_id': widget.userId}) as String;
       if (mounted) {
         setState(() {
           _profile = profile;
@@ -124,7 +129,7 @@ class _UserProfileModalState extends State<_UserProfileModal> {
               ],
               if (_isSelf && _profile?['friend_code'] != null) ...[
                 const SizedBox(height: 12),
-                Text("${'Код друга: '.tr(widget.currentLang)}${_profile!['friend_code']}", style: TextStyle(color: t.text3, fontSize: 13, letterSpacing: 1)),
+                Text("${(Features.social ? 'Код друга: ' : 'Код приглашения: ').tr(widget.currentLang)}${_profile!['friend_code']}", style: TextStyle(color: t.text3, fontSize: 13, letterSpacing: 1)),
               ],
               const SizedBox(height: 24),
               _buildActions(t),
@@ -166,6 +171,9 @@ class _UserProfileModalState extends State<_UserProfileModal> {
         },
       );
     }
+
+    // Без соцчасти у чужого профиля нет действий: ни «Написать», ни «В друзья».
+    if (!Features.social) return const SizedBox.shrink();
 
     if (_friendshipStatus == 'accepted') {
       return ClarifyButton(

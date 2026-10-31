@@ -8,6 +8,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../widgets/clarify_button.dart';
+import '../widgets/clarify_calendar_card.dart';
 import '../widgets/clarify_mcp_card.dart';
 import '../widgets/clarify_surface.dart';
 import '../widgets/clarify_toast.dart';
@@ -16,6 +17,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../core/app_settings.dart';
 import '../core/config.dart';
+import '../core/features.dart';
 import '../core/localization.dart';
 import '../core/theme/design_tokens.dart';
 import 'privacy_policy_dialog.dart';
@@ -586,7 +588,7 @@ class _AccountSettingsPanelState extends State<AccountSettingsPanel> {
         // короткому публичному коду вместо email.
         ClarifySettingsCard(
           icon: LucideIcons.userRound,
-          title: "Код друга".tr(currentLang),
+          title: (Features.social ? "Код друга" : "Код приглашения").tr(currentLang),
           trailing: friendCode == null
               ? SizedBox(
                   width: 14,
@@ -704,6 +706,12 @@ class _AccountSettingsPanelState extends State<AccountSettingsPanel> {
         // снаружи приложения». Ключ такой же по силе, как код привязки бота:
         // даёт полный доступ к задачам, поэтому отзывается одним нажатием.
         ClarifyMcpCard(currentLang: currentLang),
+        const SizedBox(height: 16),
+
+        // --- ВНЕШНИЙ КАЛЕНДАРЬ --- следом за подключением нейросетей по той же
+        // логике соседства: это тоже связь с миром за пределами приложения,
+        // только входящая — расписание приезжает к нам, а не наши задачи уходят.
+        ClarifyCalendarCard(currentLang: currentLang),
         const SizedBox(height: 16),
 
         // --- ПЕРЕКЛЮЧАТЕЛЬ АВТОЗАПУСКА --- только на десктопе, на мобильном
