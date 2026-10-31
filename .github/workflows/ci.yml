@@ -1,0 +1,48 @@
+name: CI
+
+# Проверка на каждый пуш и PR: анализатор, тесты, сборка веб-версии (PWA).
+# Нужна, чтобы изменения можно было проверить без Flutter на локальной машине —
+# в том числе изменения, которые делает ИИ-агент из облака.
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      # .env в .gitignore, но указан в assets pubspec.yaml — без файла сборка
+      # падает. Для проверки хватает заглушки; настоящие значения не нужны.
+      - name: Заглушка .env
+        run: |
+          printf 'SUPABASE_URL=https://example.supabase.co\nSUPABASE_ANON_KEY=ci-placeholder\n' > .env
+
+      - run: flutter --version
+      - run: flutter pub get
+
+      - name: Анализатор (падает только на ошибках)
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+
+      - name: Тесты
+        run: flutter test
+
+      - name: Сборка веба (PWA)
+        run: flutter build web --release
+
+      - name: Сборка веба с включённой соцчастью
+        run: flutter build web --release --dart-define=CLARIFY_SOCIAL=true --output build/web-social
