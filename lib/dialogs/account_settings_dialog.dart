@@ -17,6 +17,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../core/app_settings.dart';
 import '../core/config.dart';
+import '../core/features.dart';
 import '../core/localization.dart';
 import '../core/theme/design_tokens.dart';
 import 'privacy_policy_dialog.dart';
@@ -587,7 +588,7 @@ class _AccountSettingsPanelState extends State<AccountSettingsPanel> {
         // короткому публичному коду вместо email.
         ClarifySettingsCard(
           icon: LucideIcons.userRound,
-          title: "Код друга".tr(currentLang),
+          title: (Features.social ? "Код друга" : "Код приглашения").tr(currentLang),
           trailing: friendCode == null
               ? SizedBox(
                   width: 14,

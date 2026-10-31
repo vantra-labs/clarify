@@ -9,6 +9,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/app_settings.dart';
 import '../../core/config.dart';
+import '../../core/features.dart';
 import '../../core/localization.dart';
 import '../../core/theme/design_tokens.dart';
 import '../../dialogs/privacy_policy_dialog.dart';
@@ -88,6 +89,9 @@ class _MobileSettingsScreenState extends State<MobileSettingsScreen> {
   @override
   void initState() {
     super.initState();
+    // Мессенджер скрыт (core/features.dart) — бейдж непрочитанных не нужен,
+    // и лишняя realtime-подписка тоже.
+    if (!Features.social) return;
     _loadUnreadMessagesCount();
     // Обновляем бейдж, пока пользователь на экране настроек — не только при
     // заходе, чтобы не выглядело так, будто новое сообщение не заметилось.
@@ -217,6 +221,8 @@ class _MobileSettingsScreenState extends State<MobileSettingsScreen> {
         const SizedBox(height: 20),
 
         _SectionLabel(text: 'Обзор'.tr(currentLang)),
+        // Соцчасть скрыта флагом, см. core/features.dart.
+        if (Features.social) ...[
         ClarifySettingsCard(
           icon: LucideIcons.userRound,
           title: 'Друзья'.tr(currentLang),
@@ -244,6 +250,7 @@ class _MobileSettingsScreenState extends State<MobileSettingsScreen> {
           ),
         ),
         const SizedBox(height: 12),
+        ],
         ClarifySettingsCard(
           icon: LucideIcons.chartBar,
           title: 'Статистика'.tr(currentLang),

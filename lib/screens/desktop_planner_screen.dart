@@ -17,6 +17,7 @@ import 'package:local_notifier/local_notifier.dart';
 import '../core/app_settings.dart';
 import '../core/clarify_date_format.dart';
 import '../core/config.dart';
+import '../core/features.dart';
 import '../core/localization.dart';
 import '../core/tags.dart';
 import '../core/priority.dart';
@@ -284,7 +285,7 @@ class _DesktopPlannerScreenState extends State<DesktopPlannerScreen> {
   // подсказку на пустом чате — то же самое воспроизведено в AiChatPanel.
   List<Map<String, String>> chatMessages = [];
   late final bool _showAiOnboardingTip = !AppSettings.aiOnboardingSeen;
-  final List<String> menuItems = ['Мой день', 'Следующие 7 дней', 'Все задачи', 'Календарь', 'Входящие', 'Проекты', 'Друзья', 'Сообщения', 'Статистика', 'История', 'Корзина'];
+  final List<String> menuItems = ['Мой день', 'Следующие 7 дней', 'Все задачи', 'Календарь', 'Входящие', 'Проекты', if (Features.social) 'Друзья', if (Features.social) 'Сообщения', 'Статистика', 'История', 'Корзина'];
   final List<String> weekdaysRu = ['понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота', 'воскресенье'];
 
   bool get isDark => widget.isDark;
@@ -1910,7 +1911,7 @@ Map<String, dynamic> _parseSmartInput(String text) {
                                     ),
                                     SizedBox(width: 12 * _s),
                                     // Пульс команды (только внутри воркспейса) — нейтральная иконка, не тревожный красный
-                                    if (selectedMenu.startsWith('ws_')) ...[
+                                    if (Features.social && selectedMenu.startsWith('ws_')) ...[
                                       ClarifyIconButton(
                                         icon: LucideIcons.heartPulse,
                                         scale: _s,

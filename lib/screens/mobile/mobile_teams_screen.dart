@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import '../../core/features.dart';
 import '../../core/localization.dart';
 import '../../core/task_sort.dart';
 import '../../core/theme/design_tokens.dart';
@@ -208,8 +209,10 @@ class _WorkspaceDetailPage extends StatelessWidget {
         foregroundColor: t.text,
         title: Text(workspace['name']?.toString() ?? '', style: TextStyle(fontFamily: 'Golos Text', fontWeight: FontWeight.w700)),
         actions: [
-          ClarifyIconButton(icon: LucideIcons.heartPulse, onPressed: onShowPulse, tooltip: 'Пульс команды'.tr(currentLang)),
-          const SizedBox(width: 4),
+          if (Features.social) ...[
+            ClarifyIconButton(icon: LucideIcons.heartPulse, onPressed: onShowPulse, tooltip: 'Пульс команды'.tr(currentLang)),
+            const SizedBox(width: 4),
+          ],
           ClarifyIconButton(icon: LucideIcons.logOut, onPressed: onLeaveOrDeleteWorkspace, tooltip: 'Покинуть/удалить команду'.tr(currentLang)),
           const SizedBox(width: 4),
         ],
