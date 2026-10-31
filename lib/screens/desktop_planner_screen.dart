@@ -23,6 +23,7 @@ import '../core/tags.dart';
 import '../core/priority.dart';
 import '../core/recurrence.dart';
 import '../core/theme/design_tokens.dart';
+import '../services/analytics.dart';
 import '../services/task_service.dart';
 import '../services/update_service.dart';
 import '../widgets/clarify_button.dart';
@@ -428,6 +429,7 @@ class _DesktopPlannerScreenState extends State<DesktopPlannerScreen> {
     _initRealtime(); // <--- ВОТ ЭТА НОВАЯ СТРОЧКА
     
     _initGlobalHotkeys();
+    Analytics.start();
     // На вебе обновляться нечему: PWA получает новую версию сама, через
     // service worker. Спрашивать сервер о версии установщика там незачем.
     if (!kIsWeb) unawaited(_checkForUpdate());
@@ -1040,6 +1042,9 @@ class _DesktopPlannerScreenState extends State<DesktopPlannerScreen> {
 
   // --- ЗАМЕНИ ФУНКЦИЮ _createTaskManually ПОЛНОСТЬЮ НА ЭТОТ КУСОК ---
   Future<int?> _createTaskManually(Map<String, dynamic> taskData) async {
+    // '_source' — служебная пометка для аналитики, в базу её не отправляем.
+    final source = taskData.remove('_source') as String? ?? 'other';
+    Analytics.taskCreated(source);
     try {
       final taskFuture = _taskService.addTask(taskData); 
       
@@ -1139,10 +1144,10 @@ class _DesktopPlannerScreenState extends State<DesktopPlannerScreen> {
     // (снял галочку, поставил обратно) и от гонки двух устройств.
     if (recurringInstanceExists(tasks: tasks, task: task, dateStr: newDateStr)) return;
 
-    int? newTaskId = await _createTaskManually({"title": task['title'], "due_date": newDateStr, "due_time": task['due_time'], "note": task['note'], "priority": task['priority'], "tags": task['tags'], "recurrence": task['recurrence'], "recurrence_interval": task['recurrence_interval'], "recurrence_from_completion": task['recurrence_from_completion'] == true, "parent_id": task['parent_id'], "is_completed": false});
+    int? newTaskId = await _createTaskManually({"_source": "repeat", "title": task['title'], "due_date": newDateStr, "due_time": task['due_time'], "note": task['note'], "priority": task['priority'], "tags": task['tags'], "recurrence": task['recurrence'], "recurrence_interval": task['recurrence_interval'], "recurrence_from_completion": task['recurrence_from_completion'] == true, "parent_id": task['parent_id'], "is_completed": false});
     // Подзадачи клонируются только вместе с РЕАЛЬНО созданным родителем: если
     // создание не прошло (offline/ошибка), клоны подзадач осиротели бы.
-    if (newTaskId != null && task['parent_id'] == null) { final subtasks = tasks.where((t) => t['parent_id'] == task['id']).toList(); for (var sub in subtasks) { await _createTaskManually({"title": sub['title'], "parent_id": newTaskId, "is_completed": false}); } }
+    if (newTaskId != null && task['parent_id'] == null) { final subtasks = tasks.where((t) => t['parent_id'] == task['id']).toList(); for (var sub in subtasks) { await _createTaskManually({"_source": "subtask", "title": sub['title'], "parent_id": newTaskId, "is_completed": false}); } }
   }
 
   /// Отпускает «замороженный» порядок задачи — то есть разрешает ей переехать
@@ -1528,10 +1533,10 @@ void _checkBurnoutWarning(String dateStr) {
       // mounted после await: экран мог закрыться, пока шёл _fetchTasks.
       if (currentTargetTaskCount >= AppConfig.dailyTaskLimit) { if (mounted) ClarifyToast.show(context, "Лимит 100 задач!".tr(widget.currentLang), variant: ClarifyToastVariant.danger); return; }
       if (HardwareKeyboard.instance.isControlPressed) {
-        int? newTaskId = await _createTaskManually({"title": task['title'], "due_date": targetDateStr, "due_time": task['due_time'], "note": task['note'], "priority": task['priority'], "tags": task['tags'], "recurrence": task['recurrence'], "recurrence_interval": task['recurrence_interval'], "parent_id": task['parent_id'], "is_completed": false});
+        int? newTaskId = await _createTaskManually({"_source": "copy", "title": task['title'], "due_date": targetDateStr, "due_time": task['due_time'], "note": task['note'], "priority": task['priority'], "tags": task['tags'], "recurrence": task['recurrence'], "recurrence_interval": task['recurrence_interval'], "parent_id": task['parent_id'], "is_completed": false});
         if (newTaskId != null && task['parent_id'] == null) {
           final subtasksToCopy = tasks.where((t) => t['parent_id'] == task['id']).toList();
-          for (var sub in subtasksToCopy) { await _createTaskManually({"title": sub['title'], "parent_id": newTaskId, "is_completed": false}); }
+          for (var sub in subtasksToCopy) { await _createTaskManually({"_source": "subtask", "title": sub['title'], "parent_id": newTaskId, "is_completed": false}); }
         }
         if (mounted) ClarifyToast.show(context, "Скопировано!".tr(widget.currentLang), variant: ClarifyToastVariant.success);
       } else {
@@ -2073,6 +2078,7 @@ Map<String, dynamic> _parseSmartInput(String text) {
                               loading: _initialLoadPending && tasks.isEmpty,
                               onQuickCreate: (parsed) async {
                                 await _createTaskManually({
+                                  "_source": "quick",
                                   "title": parsed.title,
                                   "due_date": parsed.date == null ? null : _formatDate(parsed.date!),
                                   "due_time": parsed.time,

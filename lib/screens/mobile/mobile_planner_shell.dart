@@ -173,6 +173,7 @@ class _MobilePlannerShellState extends State<MobilePlannerShell> {
   /// негде: отличалось только то, что на телефоне этого ввода не было вовсе.
   Future<void> _quickCreate(QuickParseResult parsed) async {
     await widget.createTaskManually({
+      "_source": "quick",
       "title": parsed.title,
       "due_date": parsed.date == null ? null : widget.formatDate(parsed.date!),
       "due_time": parsed.time,

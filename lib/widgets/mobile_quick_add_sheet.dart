@@ -153,6 +153,7 @@ class _MobileQuickAddFormState extends State<_MobileQuickAddForm> {
 
     final date = _date;
     final newTaskId = await widget.createTaskManually({
+      "_source": "sheet",
       "title": title,
       "due_date": date != null ? widget.formatDate(date) : null,
       "due_time": _time != null
@@ -179,6 +180,7 @@ class _MobileQuickAddFormState extends State<_MobileQuickAddForm> {
     if (newTaskId != null && _subtasks.isNotEmpty) {
       for (final subTitle in _subtasks) {
         await widget.createTaskManually({
+          "_source": "subtask",
           "title": subTitle,
           "parent_id": newTaskId,
           "is_completed": false,

@@ -756,6 +756,7 @@ void showManualAddDialog({
                       // Запускаем фоновую анонимную функцию для создания главной задачи и ее подзадач
                       () async {
                         int? newTaskId = await createTaskManually({
+                          "_source": "manual",
                           "title": titleController.text.trim(),
                           "due_date": selectedDate != null
                               ? formatDate(selectedDate!)
@@ -791,6 +792,7 @@ void showManualAddDialog({
                         if (newTaskId != null && tempSubtasks.isNotEmpty) {
                           for (String subTitle in tempSubtasks) {
                             await createTaskManually({
+                              "_source": "subtask",
                               "title": subTitle,
                               "parent_id": newTaskId,
                               "is_completed": false,

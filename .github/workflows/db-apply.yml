@@ -1,0 +1,74 @@
+name: Применить SQL к базе
+
+# Ручной запуск: прогоняет один SQL-файл из репозитория по боевой базе Supabase.
+# Нужен, чтобы миграции применялись без SQL Editor и без строки подключения на
+# чьём-то компьютере — она живёт только в секретах репозитория.
+#
+# Секреты (Settings → Secrets and variables → Actions):
+#   SUPABASE_DB_URL         — строка подключения к базе (Session pooler, порт 5432);
+#   ANALYTICS_ADMIN_EMAILS  — необязательно: почты через запятую, кому видна
+#                             аналитика. Секретом, а не полем запуска, потому что
+#                             репозиторий публичный и логи прогонов видны всем.
+#
+# Файлы обязаны быть идемпотентными (create … if not exists, drop policy if
+# exists и т.д.): их можно и нужно уметь прогнать повторно.
+
+on:
+  workflow_dispatch:
+    inputs:
+      file:
+        description: 'SQL-файл из репозитория'
+        required: true
+        default: 'supabase/migrations/20261031200000_analytics.sql'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: db-apply
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Проверить, что файл существует и лежит в supabase/
+        env:
+          FILE: ${{ inputs.file }}
+        run: |
+          case "$FILE" in
+            supabase/*.sql) ;;
+            *) echo "::error::Можно применять только .sql из папки supabase/"; exit 1 ;;
+          esac
+          test -f "$FILE" || { echo "::error::Нет файла $FILE"; exit 1; }
+
+      - name: Применить
+        env:
+          FILE: ${{ inputs.file }}
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          test -n "$DB_URL" || { echo "::error::Не задан секрет SUPABASE_DB_URL"; exit 1; }
+          psql "$DB_URL" -v ON_ERROR_STOP=1 --single-transaction -q -f "$FILE"
+          echo "::notice::Применён $FILE"
+
+      - name: Выдать доступ к аналитике
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          EMAILS: ${{ secrets.ANALYTICS_ADMIN_EMAILS }}
+        run: |
+          if [ -z "$EMAILS" ]; then echo "ANALYTICS_ADMIN_EMAILS не задан — пропускаю"; exit 0; fi
+          n=$(psql "$DB_URL" -v ON_ERROR_STOP=1 -tA -v emails="$EMAILS" <<'SQL'
+          with ins as (
+            insert into public.analytics_admins (user_id)
+            select u.id from auth.users u
+            where lower(u.email) = any (string_to_array(lower(replace(:'emails', ' ', '')), ','))
+            on conflict do nothing
+            returning 1
+          )
+          select (select count(*) from public.analytics_admins);
+          SQL
+          )
+          echo "::notice::Админов аналитики в базе: $n"
