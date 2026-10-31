@@ -1,0 +1,69 @@
+name: Выкатить Edge Functions
+
+# После слияния в master, если менялся код функций, выкатывает их в боевой
+# проект Supabase. Перед выкладкой — deno check: функция, которая не
+# компилируется, не должна заменить работающую.
+#
+# Секрет SUPABASE_ACCESS_TOKEN — личный токен Supabase
+# (supabase.com/dashboard/account/tokens). Без него шаг пропускается.
+# verify_jwt=false для api берётся из supabase/config.toml: без этого перестали
+# бы работать pg_cron, вебхуки базы, Telegram и MCP.
+
+on:
+  push:
+    branches: [master]
+    paths: ['supabase/functions/**', 'supabase/config.toml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-functions
+  cancel-in-progress: false
+
+env:
+  PROJECT_REF: laghxzqqgxhspwcbbcml
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: deno check
+        run: |
+          deno check supabase/functions/api/index.ts
+          deno check supabase/functions/vk-auth/index.ts || echo "::warning::vk-auth не прошёл deno check"
+
+      - name: Есть ли токен
+        id: tok
+        env:
+          T: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          if [ -z "$T" ]; then echo "::warning::SUPABASE_ACCESS_TOKEN не задан — выкладку пропускаю"; echo "ok=false" >> "$GITHUB_OUTPUT"; else echo "ok=true" >> "$GITHUB_OUTPUT"; fi
+
+      - uses: supabase/setup-cli@v1
+        if: steps.tok.outputs.ok == 'true'
+        with:
+          version: latest
+
+      - name: Выкатить api
+        if: steps.tok.outputs.ok == 'true'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: supabase functions deploy api --project-ref "$PROJECT_REF"
+
+      - name: Проверка после выкладки
+        if: steps.tok.outputs.ok == 'true'
+        run: |
+          base="https://$PROJECT_REF.supabase.co/functions/v1/api"
+          curl -fsS "$base/health" | grep -q '"ok"'
+          v=$(curl -fsS "$base/app/latest-version")
+          echo "latest-version: $v"
+          echo "::notice::api выкачена, /health отвечает; latest-version: $v"

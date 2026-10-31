@@ -1,0 +1,35 @@
+name: clarify_installer
+description: "Установщик Clarify"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Распаковка payload.zip прямо в Dart — так у прогресса есть настоящие
+  # пофайловые шаги, а не «крутилка на время работы внешнего tar.exe».
+  archive: ^3.6.1
+  # Тот же безрамочный кастомный тайтлбар, что и в самом Clarify: установщик
+  # должен выглядеть частью продукта, а не системным окном.
+  bitsdojo_window: ^0.1.6
+  lucide_icons_flutter: ^3.1.15
+  path: ^1.9.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  fonts:
+    - family: Golos Text
+      fonts:
+        - asset: assets/fonts/GolosText-Variable.ttf
+    - family: Unbounded
+      fonts:
+        - asset: assets/fonts/Unbounded-Variable.ttf
