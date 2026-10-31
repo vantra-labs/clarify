@@ -38,8 +38,10 @@ jobs:
       - name: Анализатор (падает только на ошибках)
         run: flutter analyze --no-fatal-infos --no-fatal-warnings
 
+      # --reporter github: каждая упавшая проверка — отдельная аннотация с
+      # текстом ошибки, её видно в API без скачивания полного лога.
       - name: Тесты
-        run: flutter test
+        run: flutter test --reporter github
 
       - name: Сборка веба (PWA)
         run: flutter build web --release
