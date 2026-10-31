@@ -8,6 +8,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../widgets/clarify_button.dart';
+import '../widgets/clarify_calendar_card.dart';
 import '../widgets/clarify_mcp_card.dart';
 import '../widgets/clarify_surface.dart';
 import '../widgets/clarify_toast.dart';
@@ -704,6 +705,12 @@ class _AccountSettingsPanelState extends State<AccountSettingsPanel> {
         // снаружи приложения». Ключ такой же по силе, как код привязки бота:
         // даёт полный доступ к задачам, поэтому отзывается одним нажатием.
         ClarifyMcpCard(currentLang: currentLang),
+        const SizedBox(height: 16),
+
+        // --- ВНЕШНИЙ КАЛЕНДАРЬ --- следом за подключением нейросетей по той же
+        // логике соседства: это тоже связь с миром за пределами приложения,
+        // только входящая — расписание приезжает к нам, а не наши задачи уходят.
+        ClarifyCalendarCard(currentLang: currentLang),
         const SizedBox(height: 16),
 
         // --- ПЕРЕКЛЮЧАТЕЛЬ АВТОЗАПУСКА --- только на десктопе, на мобильном
