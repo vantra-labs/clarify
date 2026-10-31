@@ -23,7 +23,10 @@ export async function transcribeVoice(
   contentType = "audio/ogg",
 ): Promise<string> {
   const apiKey = requireEnv("GROQ_API_KEY");
-  const blob = audio instanceof Blob ? audio : new Blob([audio], { type: contentType });
+  // new Uint8Array(audio): копия на обычном ArrayBuffer. Свежий TypeScript не
+  // принимает Uint8Array<ArrayBufferLike> как BlobPart (там может оказаться
+  // SharedArrayBuffer), и deno check перед выкладкой падал.
+  const blob = audio instanceof Blob ? audio : new Blob([new Uint8Array(audio)], { type: contentType });
 
   const form = new FormData();
   form.append("file", blob, filename);
