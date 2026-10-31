@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <!--
+    If you are serving your web app in a path other than the root, change the
+    href value below to reflect the base path you are serving from.
+
+    The path provided below has to start and end with a slash "/" in order for
+    it to work correctly.
+
+    For more details:
+    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
+
+    This is a placeholder for base href that will be replaced by the value of
+    the `--base-href` argument provided to `flutter build`.
+  -->
+  <base href="/app/">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="Планировщик задач с AI-ассистентом и командной работой.">
+  <meta name="theme-color" content="#F6F6FB" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0A0A10" media="(prefers-color-scheme: dark)">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <!-- apple-mobile-web-app-status-bar-style ниже игнорируется iOS Safari без
+       этого тега (Apple требует именно свой префикс, не только стандартный
+       mobile-web-app-capable выше) — без него статус-бар оставался
+       непрозрачным чёрным независимо от заданного style. -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <!-- Было "black-translucent" — прозрачный статус-бар, под который приложение
+       рисует свой фон. Выглядело лучше, но в УСТАНОВЛЕННОМ на экран приложении
+       ломало попадание по кнопкам: содержимое уезжает под часы, а координаты
+       касания остаются считаться от прежней рамки, и палец приходится ставить
+       выше кнопки ровно на высоту статус-бара. Во вкладке браузера этот режим
+       не действует вовсе, поэтому баг всплыл только после установки PWA
+       (проверено владельцем 09.09.2026: во вкладке кнопки жмутся нормально,
+       в установленном приложении — нет).
+
+       "default" отдаёт полосу статус-бара системе, поэтому координаты сходятся.
+       Прежняя причина отказа от непрозрачного варианта — «чёрная полоса не
+       совпадает со светлой темой» — к "default" не относится: iOS красит его
+       по meta theme-color выше, а он у нас задан отдельно для светлой и
+       тёмной темы. Не менять на "black" — вот он как раз всегда чёрный. -->
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Clarify">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <title>Clarify</title>
+  <link rel="manifest" href="manifest.json">
+
+  <style>
+    /* Flutter Web дублирует текст в скрытые accessibility-узлы (flt-semantics)
+       для скринридеров — iOS Safari накладывает на них нативную проверку
+       орфографии/автозамены (жёлтое/красное подчёркивание), из-за чего
+       обычный текст (например, тосты) выглядит как будто с ошибкой.
+       Подчёркивание чисто визуальное, реального текста в DOM это не касается. */
+    flt-semantics, flt-semantics * {
+      -webkit-text-decoration-line: none !important;
+      text-decoration-line: none !important;
+    }
+
+    /* Без этого сброса body сохраняет UA-дефолтный margin (обычно 8px) —
+       на мобильном это видно как белую плашку сверху под статус-баром,
+       т.к. Flutter не рисует в safe-area, а под ней остаётся голый body. */
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background-color: #F5F5F5;
+    }
+    @media (prefers-color-scheme: dark) {
+      html, body { background-color: #111111; }
+    }
+
+    /* Логотип-заглушка на время загрузки движка Flutter (main.dart.js/wasm) —
+       до первого кадра тут иначе голый цвет фона, см. flutter_bootstrap.js
+       (снимается коллбэком onEntrypointLoaded после runApp()). */
+    @font-face {
+      font-family: 'Unbounded';
+      src: url('assets/assets/fonts/Unbounded-Variable.ttf') format('truetype');
+      font-weight: 700;
+    }
+    #app-loading {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Unbounded', sans-serif;
+      font-weight: 700;
+      font-size: 28px;
+      letter-spacing: 0.02em;
+      /* Фирменные цвета: знак и надпись одного цвета с текстом, а не
+         акцентного — акцент принадлежит действиям, а не логотипу. */
+      color: #111111;
+      transition: opacity 0.25s ease-out;
+    }
+    @media (prefers-color-scheme: dark) {
+      #app-loading { color: #F5F5F5; }
+    }
+    /* Знак наследует цвет родителя через currentColor — одна разметка на обе
+       темы, без второй картинки и без inversion-фильтра. */
+    #app-loading svg { width: 56px; height: 56px; display: block; }
+    @media (prefers-reduced-motion: no-preference) {
+      #app-loading { animation: app-loading-pulse 1.4s ease-in-out infinite; }
+    }
+    @keyframes app-loading-pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Знак Clarify контурами: заставка показывается ДО загрузки движка
+       Flutter, поэтому нарисовать его виджетом здесь нельзя. Геометрия — та
+       же, что в brand/clarify/mark-currentcolor.svg и в ClarifyMark. -->
+  <div id="app-loading">
+    <svg viewBox="0 0 64 64" fill="currentColor" aria-hidden="true" focusable="false">
+      <path d="M16 8.5 L23 8.5 A4 4 0 0 1 27 12.5 L27 51.5 A4 4 0 0 1 23 55.5 L16 55.5 A12 12 0 0 1 4 43.5 L4 20.5 A12 12 0 0 1 16 8.5 Z" transform="translate(0 -6)"/>
+      <path d="M41 8.5 L48 8.5 A12 12 0 0 1 60 20.5 L60 43.5 A12 12 0 0 1 48 55.5 L41 55.5 A4 4 0 0 1 37 51.5 L37 12.5 A4 4 0 0 1 41 8.5 Z" transform="translate(0 6)"/>
+    </svg>
+    <span>Clarify</span>
+  </div>
+
+  <!--
+    You can customize the "flutter_bootstrap.js" script.
+    This is useful to provide a custom configuration to the Flutter loader
+    or to give the user feedback during the initialization process.
+
+    For more details:
+    * https://docs.flutter.dev/platform-integration/web/initialization
+  -->
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>
