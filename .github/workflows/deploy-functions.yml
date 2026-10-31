@@ -36,10 +36,15 @@ jobs:
         with:
           deno-version: v2.x
 
+      # Ошибки — аннотациями: полный лог прогона не всегда можно скачать.
       - name: deno check
         run: |
-          deno check supabase/functions/api/index.ts
-          deno check supabase/functions/vk-auth/index.ts || echo "::warning::vk-auth не прошёл deno check"
+          set +e
+          deno check supabase/functions/api/index.ts > check.txt 2>&1
+          code=$?
+          sed 's/\x1b\[[0-9;]*m//g' check.txt | grep -E "error|ERROR|TS[0-9]+|at file" | head -40 | while IFS= read -r l; do echo "::error::$l"; done
+          deno check supabase/functions/vk-auth/index.ts >/dev/null 2>&1 || echo "::warning::vk-auth не прошёл deno check"
+          exit $code
 
       - name: Есть ли токен
         id: tok
