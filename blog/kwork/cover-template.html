@@ -1,16 +1,16 @@
 <!doctype html><html><head><meta charset="utf-8"><style>
-@font-face{font-family:Unb;src:url(file:///mnt/user-data/uploads/VANTRA/projects/SmartPlanner/installer/clarify_installer/assets/fonts/Unbounded-Variable.ttf);font-weight:200 900}
-@font-face{font-family:Golos;src:url(file:///mnt/user-data/uploads/VANTRA/projects/SmartPlanner/installer/clarify_installer/assets/fonts/GolosText-Variable.ttf);font-weight:400 900}
+@font-face{font-family:'Unbounded';src:local('Unbounded');font-weight:200 900}
+@font-face{font-family:'Golos Text';src:local('Golos Text');font-weight:400 900}
 *{margin:0;box-sizing:border-box}
-html,body{width:1320px;height:880px;overflow:hidden;background:#F4F0E9;font-family:Golos;color:#16140F}
+html,body{width:1320px;height:880px;overflow:hidden;background:#F4F0E9;font-family:'Golos Text';color:#16140F}
 .wrap{position:absolute;inset:0;padding:84px 80px}
 .kicker{display:inline-block;font-size:24px;font-weight:600;letter-spacing:.5px;color:#fff;background:#16140F;padding:10px 20px;border-radius:999px}
-h1{font-family:Unb;font-weight:700;font-size:64px;line-height:1.06;margin-top:34px;width:620px;letter-spacing:-1px}
+h1{font-family:'Unbounded';font-weight:700;font-size:64px;line-height:1.06;margin-top:34px;width:620px;letter-spacing:-1px}
 .badges{margin-top:34px;display:flex;flex-direction:column;gap:14px}
 .b{font-size:28px;font-weight:500;display:flex;gap:14px;align-items:center}
 .b i{width:30px;height:30px;border-radius:50%;background:#4F46E5;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-style:normal;font-size:18px;font-weight:800}
-.price{position:absolute;left:80px;bottom:70px;font-family:Unb;font-weight:700;font-size:44px}
-.price span{font-family:Golos;font-weight:500;font-size:26px;color:#6B665C;margin-right:10px}
+.price{position:absolute;left:80px;bottom:70px;font-family:'Unbounded';font-weight:700;font-size:44px}
+.price span{font-family:'Golos Text';font-weight:500;font-size:26px;color:#6B665C;margin-right:10px}
 .lap{position:absolute;right:-60px;top:150px;width:640px;border-radius:18px;background:#16140F;padding:14px 14px 18px;box-shadow:0 40px 80px rgba(22,20,15,.25)}
 .lap img{width:100%;border-radius:8px;display:block}
 .phone{position:absolute;right:420px;top:380px;width:190px;border-radius:30px;background:#16140F;padding:10px;box-shadow:0 30px 60px rgba(22,20,15,.3)}
@@ -20,16 +20,21 @@ h1{font-family:Unb;font-weight:700;font-size:64px;line-height:1.06;margin-top:34
 .tag{position:absolute;background:#4F46E5;color:#fff;font-weight:700;font-size:20px;border-radius:999px;width:40px;height:40px;display:flex;align-items:center;justify-content:center}
 .big{position:absolute;right:70px;top:220px;width:520px}
 .box{background:#fff;border-radius:22px;padding:30px 34px;box-shadow:0 20px 50px rgba(22,20,15,.12);font-size:30px;font-weight:600}
-.arrow{font-family:Unb;font-size:60px;text-align:center;color:#4F46E5;margin:14px 0}
+.arrow{font-family:'Unbounded';font-size:60px;text-align:center;color:#4F46E5;margin:14px 0}
 .muted{color:#8A8478;text-decoration:line-through;font-weight:500}
+.sheet{position:absolute;right:50px;top:300px;width:560px;background:#fff;border-radius:18px;box-shadow:0 30px 70px rgba(22,20,15,.18);overflow:hidden;font-size:22px}
+.sheet .bar{background:#E9F5EE;padding:14px 18px;font-family:monospace;font-size:18px;color:#1D6F42}
+.sheet table{border-collapse:collapse;width:100%}.sheet td{border:1px solid #E4E0D8;padding:12px 14px}
+.sheet tr:first-child td{background:#1D6F42;color:#fff;font-weight:700}.sheet tr:last-child td{font-weight:700;background:#F4F0E9}
+.muted2{color:#8A8478;font-size:22px;font-weight:500}
 </style></head><body><div class="wrap" id="w"></div>
 <script>
 const q=new URLSearchParams(location.search).get('k');
 const C={
-landing:{k:'Лендинг под ключ',h:'Продающий лендинг за&nbsp;3&nbsp;дня',b:['Адаптив под телефон','Без конструктора и подписок','Исходники ваши'],p:'6 000 ₽',art:'<div class="lap"><img src="clarify-desk.png"></div><div class="phone"><img src="clarify-mob.png"></div>'},
-vizitka:{k:'Сайт-визитка',h:'Сайт для бизнеса <span style="white-space:nowrap">на 3–7 страниц</span>',b:['Форма заявки и Метрика','Быстрый и адаптивный','Помогу разместить'],p:'7 000 ₽',art:'<div class="lap"><img src="vantra-desk.png"></div><div class="phone"><img src="vantra-mob.png"></div>'},
-pravki:{k:'Правки на сайте',h:'Исправлю и доработаю ваш сайт за&nbsp;1&nbsp;день',b:['Тексты, картинки, блоки','Починю адаптив','Список правок одним заказом'],p:'1 000 ₽',art:'<div class="lap"><img src="clarify-desk.png"></div><div class="mark" style="right:310px;top:300px;width:260px;height:70px"></div><div class="tag" style="right:556px;top:280px">1</div><div class="mark" style="right:30px;top:420px;width:250px;height:160px"></div><div class="tag" style="right:262px;top:400px">2</div><div class="pill" style="right:120px;top:640px">✓ Срок от 1 дня</div>'},
-tilda:{k:'Перенос сайта',h:'Перенесу сайт с Тильды на ваш хостинг',b:['Дизайн сохраню 1 в 1','Формы будут работать','Без ежемесячной подписки'],p:'4 000 ₽',art:'<div class="big"><div class="box"><span class="muted">Подписка конструктора</span><br>каждый месяц</div><div class="arrow">↓</div><div class="box" style="background:#16140F;color:#fff">Свой хостинг<br><span style="color:#A5B4FC">от 150 ₽ в месяц</span></div></div>'}
+landing:{k:'Лендинг под ключ',h:'Продающий лендинг за&nbsp;1&nbsp;день',b:['Адаптив под телефон','Без конструктора и подписок','Исходники ваши'],p:'3 000 ₽',art:'<div class="lap"><img src="clarify-desk.png"></div><div class="phone"><img src="clarify-mob.png"></div>'},
+vizitka:{k:'Сайт-визитка',h:'Сайт для бизнеса <span style="white-space:nowrap">на 3–7 страниц</span>',b:['Форма заявки и Метрика','Быстрый и адаптивный','Помогу разместить'],p:'4 000 ₽',art:'<div class="lap"><img src="vantra-desk.png"></div><div class="phone"><img src="vantra-mob.png"></div>'},
+pravki:{k:'Правки на сайте',h:'Исправлю и доработаю ваш сайт за&nbsp;1&nbsp;день',b:['Тексты, картинки, блоки','Починю адаптив','Список правок одним заказом'],p:'500 ₽',art:'<div class="lap"><img src="clarify-desk.png"></div><div class="mark" style="right:310px;top:300px;width:260px;height:70px"></div><div class="tag" style="right:556px;top:280px">1</div><div class="mark" style="right:30px;top:420px;width:250px;height:160px"></div><div class="tag" style="right:262px;top:400px">2</div><div class="pill" style="right:120px;top:640px">✓ Срок от 1 дня</div>'},
+tilda:{k:'Перенос сайта',h:'Перенесу сайт с Тильды на ваш хостинг',b:['Дизайн сохраню 1 в 1','Формы будут работать','Без ежемесячной подписки'],p:'3 000 ₽',art:'<div class="big"><div class="box"><span class="muted">Подписка конструктора</span><br>каждый месяц</div><div class="arrow">↓</div><div class="box" style="background:#16140F;color:#fff">Свой хостинг<br><span style="color:#A5B4FC">от 150 ₽ в месяц</span></div></div>'},excel:{k:'Excel и Google Таблицы',h:'Таблицы под ключ за&nbsp;1&nbsp;день',b:['Формулы и сводные','Макросы VBA и Apps Script','Отчёты в один клик'],p:'500 ₽',art:'<div class="sheet"><div class="bar"><b>fx</b> =СУММЕСЛИ(B:B;"Секция*";C:C)</div><table><tr><td>Объект</td><td>План</td><td>Факт</td><td>%</td></tr><tr><td>Секция 1</td><td>1 240</td><td>1 180</td><td>95%</td></tr><tr><td>Секция 2</td><td>980</td><td>1 010</td><td>103%</td></tr><tr><td>Секция 3</td><td>1 560</td><td>1 320</td><td>85%</td></tr><tr><td>Итого</td><td>3 780</td><td>3 510</td><td>93%</td></tr></table></div><div class="pill" style="right:330px;top:640px">✓ Макрос: отчёт в 1 клик</div>'},metrika:{k:'Яндекс Метрика',h:'Подключу Метрику и&nbsp;настрою цели',b:['Счётчик и Вебвизор','Цели на заявки и звонки','Проверю, что всё считается'],p:'500 ₽',art:'<div class="big"><div class="box">Цель «Заявка»<br><span style="color:#4F46E5">отправка формы ✓</span></div><div class="arrow">↓</div><div class="box">Цель «Звонок»<br><span style="color:#4F46E5">клик по телефону ✓</span></div></div>'},form:{k:'Заявки с сайта',h:'Заявки с формы сайта в&nbsp;Telegram',b:['Мгновенное уведомление','Копия на почту','Без сторонних сервисов'],p:'500 ₽',art:'<div class="big"><div class="box">Форма на сайте<br><span class="muted2">Имя · Телефон · Отправить</span></div><div class="arrow">↓</div><div class="box" style="background:#16140F;color:#fff">Новая заявка<br><span style="color:#A5B4FC">в Telegram и на почту</span></div></div>'}
 }[q];
 document.getElementById('w').innerHTML='<div class="kicker">'+C.k+'</div><h1>'+C.h+'</h1><div class="badges">'+C.b.map(x=>'<div class="b"><i>✓</i>'+x+'</div>').join('')+'</div><div class="price"><span>от</span>'+C.p+'</div>'+C.art;
 </script></body></html>
